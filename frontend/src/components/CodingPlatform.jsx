@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config/api';
-import MonacoEditor from './MonacoEditor';
+import CodeEditor from './CodeEditor';
 
 const CodingPlatform = () => {
   const navigate = useNavigate();
@@ -149,6 +149,16 @@ const CodingPlatform = () => {
                 Description
               </button>
               <button
+                onClick={() => setActiveTab('testcases')}
+                className={`flex-1 px-6 py-3 font-semibold transition-colors ${
+                  activeTab === 'testcases'
+                    ? 'bg-cyan-500/20 text-cyan-400 border-b-2 border-cyan-500'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Test Cases
+              </button>
+              <button
                 onClick={() => setActiveTab('submissions')}
                 className={`flex-1 px-6 py-3 font-semibold transition-colors ${
                   activeTab === 'submissions'
@@ -218,6 +228,34 @@ const CodingPlatform = () => {
                 </div>
               )}
 
+              {activeTab === 'testcases' && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-bold text-white mb-4">Test Cases</h2>
+                  {question.testCases && question.testCases.map((testCase, index) => (
+                    <div key={index} className="bg-[#0f1425] border border-gray-700 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-cyan-400">Test Case {index + 1}</h3>
+                        <span className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300">
+                          {index === 0 ? 'Example' : 'Test'}
+                        </span>
+                      </div>
+                      <div className="mb-3">
+                        <p className="text-gray-400 text-sm font-semibold mb-1">Input:</p>
+                        <p className="text-cyan-300 font-mono text-sm bg-[#0a0e27] p-2 rounded">
+                          {testCase.input}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-400 text-sm font-semibold mb-1">Output:</p>
+                        <p className="text-green-300 font-mono text-sm bg-[#0a0e27] p-2 rounded">
+                          {testCase.output}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {activeTab === 'submissions' && (
                 <div className="text-gray-400">
                   <p>No submissions yet. Submit your solution to see it here.</p>
@@ -227,78 +265,15 @@ const CodingPlatform = () => {
           </div>
 
           {/* Right Panel - Code Editor */}
-          <div className="bg-[#1a1f3a]/90 border border-gray-700 rounded-xl overflow-hidden flex flex-col h-[calc(100vh-200px)]">
-            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-              <div className="flex items-center space-x-4">
-                <select className="bg-[#0f1425] border border-gray-700 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50">
-                  <option>JavaScript</option>
-                  <option>Python</option>
-                  <option>Java</option>
-                  <option>C++</option>
-                </select>
-                <button className="text-gray-400 hover:text-white p-1 rounded hover:bg-gray-700/50">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button 
-                  onClick={() => setCode(question.starterCode)}
-                  className="text-gray-400 hover:text-white text-sm px-3 py-1 rounded hover:bg-gray-700/50 transition-colors"
-                >
-                  Reset Code
-                </button>
-                <button className="text-gray-400 hover:text-white p-1.5 rounded hover:bg-gray-700/50">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            
-            {/* Monaco Editor */}
-            <div className="flex-1 min-h-0">
-              <MonacoEditor
-                code={code}
-                language="javascript"
-                onChange={setCode}
-                readOnly={false}
-              />
-            </div>
-            
-            {/* Console/Output */}
-            <div className="border-t border-gray-700 bg-[#0f1425] flex flex-col" style={{ height: '30%', minHeight: '150px' }}>
-              <div className="border-b border-gray-700 px-4 py-2 flex justify-between items-center">
-                <div className="flex space-x-4">
-                  <button 
-                    onClick={() => setActiveTab('console')} 
-                    className={`px-3 py-1 text-sm font-medium rounded-t ${activeTab === 'console' ? 'bg-[#1a1f3a] text-white' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    Console
-                  </button>
-                  <button 
-                    onClick={() => setActiveTab('test-cases')} 
-                    className={`px-3 py-1 text-sm font-medium rounded-t ${activeTab === 'test-cases' ? 'bg-[#1a1f3a] text-white' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    Test Cases
-                  </button>
-                </div>
-                <button className="text-gray-400 hover:text-white p-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex-1 overflow-auto p-4 font-mono text-sm text-gray-300">
-                {output && output.split('\n').map((line, i) => (
-                  <div key={i} className={line.includes('PASSED') ? 'text-green-400' : line.includes('FAILED') ? 'text-red-400' : ''}>
-                    {line}
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="flex flex-col h-[calc(100vh-200px)]">
+            <CodeEditor
+              initialCode={code}
+              language="javascript"
+              onChange={setCode}
+              onRun={runCode}
+              theme="vs-dark"
+              questionId={questionId}
+            />
           </div>
         </div>
       </div>

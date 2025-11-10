@@ -1,7 +1,12 @@
+// MUST be first - before any other imports!
 import dotenv from 'dotenv';
-
-// Load environment variables FIRST before any other imports
 dotenv.config();
+
+// Debug: Check if .env is loaded
+console.log('🔍 Server.js Debug:');
+console.log(`   .env loaded: ${process.env.JUDGE0_API_KEY ? 'YES' : 'NO'}`);
+console.log(`   JUDGE0_API_KEY: ${process.env.JUDGE0_API_KEY || 'UNDEFINED'}`);
+console.log(`   Working Directory: ${process.cwd()}`);
 
 import express from 'express';
 import cors from 'cors';
@@ -11,6 +16,7 @@ import connectDB from './config/database.js';
 import passportConfig, { configureStrategies } from './config/passport.js';
 import authRoutes from './routes/authRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
+import codeRoutes from './routes/codeRoutes.js';
 
 // Connect to database
 connectDB();
@@ -58,6 +64,7 @@ app.use(passportConfig.session());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/questions', questionRoutes);
+app.use('/api/code', codeRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

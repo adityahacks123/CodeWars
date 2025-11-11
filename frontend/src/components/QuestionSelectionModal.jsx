@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config/api';
 
 const QuestionSelectionModal = ({ isOpen, onClose, onSelectQuestion }) => {
+  const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
   const [topics, setTopics] = useState([]);
   const [selectedTopic, setSelectedTopic] = useState('All');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
+  const [creatingRoom, setCreatingRoom] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -88,6 +91,35 @@ const QuestionSelectionModal = ({ isOpen, onClose, onSelectQuestion }) => {
         return 'text-red-400 bg-red-500/10';
       default:
         return 'text-gray-400 bg-gray-500/10';
+    }
+  };
+
+  const handleCreateRoom = async (question) => {
+    try {
+      setCreatingRoom(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(API_ENDPOINTS.ROOMS, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ questionId: question._id })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        onClose();
+        navigate(`/room/${data.data.roomCode}`);
+      } else {
+        console.error('Failed to create room:', data.message);
+      }
+    } catch (error) {
+      console.error('Error creating room:', error);
+    } finally {
+      setCreatingRoom(false);
     }
   };
 
@@ -179,7 +211,7 @@ const QuestionSelectionModal = ({ isOpen, onClose, onSelectQuestion }) => {
                 <div
                   key={question._id}
                   className="px-8 py-4 hover:bg-[#1a1f3a] transition-colors cursor-pointer border-l-4 border-transparent hover:border-cyan-500"
-                  onClick={() => onSelectQuestion(question)}
+                  onClick={() => handleCreateRoom(question)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">

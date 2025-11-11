@@ -9,6 +9,10 @@ const TargetPage = () => {
   const [user, setUser] = useState(null);
   const [difficulty, setDifficulty] = useState('Medium');
   const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [showJoinRoomModal, setShowJoinRoomModal] = useState(false);
+  const [roomCode, setRoomCode] = useState('');
+  const [joiningRoom, setJoiningRoom] = useState(false);
+  const [joinError, setJoinError] = useState(null);
 
   useEffect(() => {
     const tokenFromUrl = searchParams.get('token');
@@ -27,6 +31,47 @@ const TargetPage = () => {
       navigate('/');
     }
   }, [searchParams, navigate]);
+
+  const handleJoinRoom = async (e) => {
+    e.preventDefault();
+    
+    if (!roomCode.trim()) {
+      setJoinError('Please enter a room code');
+      return;
+    }
+
+    try {
+      setJoiningRoom(true);
+      setJoinError(null);
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${API_ENDPOINTS.ROOMS}/${roomCode.toUpperCase()}/join`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setJoinError(data.message || 'Failed to join room');
+        return;
+      }
+
+      if (data.success) {
+        setShowJoinRoomModal(false);
+        setRoomCode('');
+        navigate(`/room/${roomCode.toUpperCase()}`);
+      }
+    } catch (err) {
+      console.error('Error joining room:', err);
+      setJoinError('Failed to join room. Please try again.');
+    } finally {
+      setJoiningRoom(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -142,22 +187,36 @@ const TargetPage = () => {
               <span className="text-cyan-400">TEAM</span>
             </h1>
 
-            {/* Difficulty and Create Room */}
-            <div className="flex items-center gap-4 mb-6">
+            {/* Difficulty and Create/Join Room Buttons */}
+            <div className="flex items-center gap-4 mb-6 flex-wrap">
               <select 
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
-                className="bg-[#1a1f3a] border border-gray-700 text-white px-6 py-3 rounded-lg focus:outline-none focus:border-cyan-500 cursor-pointer"
+                className="bg-[#1a1f3a] border border-gray-700 text-white px-6 py-3 rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/50 cursor-pointer font-semibold transition-all"
               >
                 <option value="Easy">Easy</option>
                 <option value="Medium">Medium</option>
                 <option value="Hard">Hard</option>
               </select>
+              
               <button 
                 onClick={() => setShowQuestionModal(true)}
-                className="bg-cyan-500 hover:bg-cyan-600 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
+                className="group relative bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 flex items-center gap-2 hover:scale-105"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
                 Create Room
+              </button>
+              
+              <button 
+                onClick={() => setShowJoinRoomModal(true)}
+                className="group relative bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 shadow-lg shadow-purple-600/50 hover:shadow-purple-600/70 flex items-center gap-2 hover:scale-105"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+                Join Room
               </button>
             </div>
 
@@ -306,6 +365,108 @@ const TargetPage = () => {
       </div>
 
       {/* Question Selection Modal */}
+      {/* Join Room Modal */}
+      {showJoinRoomModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-gradient-to-br from-[#0a0e27] to-[#1a1f3a] border border-purple-500/30 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl shadow-purple-500/20">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-600/20 to-cyan-600/20 border-b border-purple-500/30 px-8 py-6 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="bg-purple-600 rounded-lg p-2">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-white">Join Room</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowJoinRoomModal(false);
+                  setRoomCode('');
+                  setJoinError(null);
+                }}
+                className="text-gray-400 hover:text-white transition-colors hover:bg-gray-700/50 p-2 rounded-lg"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-8">
+              <form onSubmit={handleJoinRoom} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
+                    <span className="text-purple-400">📝</span>
+                    Enter Room Code
+                  </label>
+                  <input
+                    type="text"
+                    value={roomCode}
+                    onChange={(e) => {
+                      setRoomCode(e.target.value.toUpperCase());
+                      setJoinError(null);
+                    }}
+                    placeholder="ABC123"
+                    className="w-full bg-[#1a1f3a] border-2 border-purple-500/30 hover:border-purple-500/50 focus:border-purple-500 text-white px-4 py-4 rounded-lg focus:outline-none text-center text-3xl font-mono tracking-widest font-bold transition-colors"
+                    maxLength="6"
+                    disabled={joiningRoom}
+                    autoFocus
+                  />
+                  <p className="text-gray-400 text-xs mt-3 text-center">
+                    Ask your friend for the 6-character room code
+                  </p>
+                </div>
+
+                {joinError && (
+                  <div className="bg-red-500/20 border border-red-500/50 text-red-300 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+                    <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{joinError}</span>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={joiningRoom || !roomCode.trim()}
+                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg shadow-purple-600/50 hover:shadow-purple-600/70 disabled:shadow-none flex items-center justify-center gap-2"
+                >
+                  {joiningRoom ? (
+                    <>
+                      <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Joining...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Join Room
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowJoinRoomModal(false);
+                    setRoomCode('');
+                    setJoinError(null);
+                  }}
+                  className="w-full bg-gray-700/50 hover:bg-gray-700 text-white font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       <QuestionSelectionModal
         isOpen={showQuestionModal}
         onClose={() => setShowQuestionModal(false)}

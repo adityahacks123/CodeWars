@@ -8,6 +8,8 @@ import ProblemsPage from './components/ProblemsPage'
 import Profile from './components/Profile'
 import ProfileTest from './components/ProfileTest'
 import ActiveBattles from './components/ActiveBattles'
+import RoomPage from './components/RoomPage'
+import JoinRoom from './components/JoinRoom'
 
 function App() {
   return (
@@ -22,6 +24,9 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile-test" element={<ProfileTest />} />
           <Route path="/coding/:questionId" element={<CodingPlatform />} />
+          <Route path="/room/:roomCode" element={<RoomPage />} />
+          <Route path="/join-room/:roomCode" element={<JoinRoom />} />
+          <Route path="/join-room" element={<JoinRoom />} />
         </Routes>
       </div>
     </Router>

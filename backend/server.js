@@ -17,6 +17,7 @@ import passportConfig, { configureStrategies } from './config/passport.js';
 import authRoutes from './routes/authRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
 import codeRoutes from './routes/codeRoutes.js';
+import roomRoutes from './routes/roomRoutes.js';
 
 // Connect to database
 connectDB();
@@ -65,6 +66,7 @@ app.use(passportConfig.session());
 app.use('/api/auth', authRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/code', codeRoutes);
+app.use('/api/rooms', roomRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

@@ -12,6 +12,9 @@ export const API_ENDPOINTS = {
   
   // Questions endpoints
   QUESTIONS: `${API_BASE_URL}/questions`,
+  
+  // Rooms endpoints
+  ROOMS: `${API_BASE_URL}/rooms`,
 };
 
 export default API_BASE_URL;

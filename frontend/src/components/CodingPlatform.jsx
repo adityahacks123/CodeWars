@@ -1,21 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config/api';
 import CodeEditor from './CodeEditor';
 
 const CodingPlatform = () => {
   const navigate = useNavigate();
   const { questionId } = useParams();
+  const [searchParams] = useSearchParams();
+  const roomCode = searchParams.get('roomCode');
   const [question, setQuestion] = useState(null);
   const [code, setCode] = useState('');
   const [output, setOutput] = useState('');
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [activeTab, setActiveTab] = useState('description');
+  const [room, setRoom] = useState(null);
+  const [showParticipants, setShowParticipants] = useState(false);
 
   useEffect(() => {
     fetchQuestion();
-  }, [questionId]);
+    if (roomCode) {
+      fetchRoomDetails();
+    }
+  }, [questionId, roomCode]);
 
   const fetchQuestion = async () => {
     try {
@@ -29,6 +36,26 @@ const CodingPlatform = () => {
       console.error('Error fetching question:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRoomDetails = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_ENDPOINTS.ROOMS}/${roomCode}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setRoom(data.data);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching room details:', error);
     }
   };
 
@@ -126,6 +153,43 @@ const CodingPlatform = () => {
               >
                 Submit
               </button>
+              {room && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowParticipants(!showParticipants)}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors font-semibold flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 12H9m6 0a6 6 0 11-12 0 6 6 0 0112 0z" />
+                    </svg>
+                    {room.participants.length}
+                  </button>
+                  {showParticipants && (
+                    <div className="absolute right-0 mt-2 w-64 bg-[#1a1f3a] border border-gray-700 rounded-lg shadow-xl z-50">
+                      <div className="p-4">
+                        <h3 className="font-semibold text-white mb-3">Room Participants</h3>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {room.participants.map((participant, index) => (
+                            <div key={index} className="flex items-center gap-3 p-2 bg-[#0f1425] rounded">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+                                <span className="text-white font-bold text-sm">
+                                  {participant.user.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-white text-sm truncate">{participant.user.name}</p>
+                                <p className="text-xs text-gray-400">
+                                  {participant.user._id === room.host._id ? 'Host' : 'Guest'}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

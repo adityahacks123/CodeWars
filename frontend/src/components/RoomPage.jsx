@@ -12,6 +12,9 @@ const RoomPage = () => {
   const [notification, setNotification] = useState(null);
   const [previousParticipantCount, setPreviousParticipantCount] = useState(0);
   const [newJoinedUser, setNewJoinedUser] = useState(null);
+  const [leftUser, setLeftUser] = useState(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   useEffect(() => {
     fetchRoomDetails();
@@ -61,6 +64,26 @@ const RoomPage = () => {
           }
         }
         
+        // Check if a participant left
+        if (room && currentRoom.participants.length < previousParticipantCount) {
+          // Find who left
+          const currentParticipantIds = currentRoom.participants.map(p => p.user._id);
+          const leftParticipant = room.participants.find(
+            p => !currentParticipantIds.includes(p.user._id)
+          );
+          
+          if (leftParticipant) {
+            setLeftUser(leftParticipant.user);
+            setNotification(`${leftParticipant.user.name} left the room`);
+            
+            // Auto-hide notification after 4 seconds
+            setTimeout(() => {
+              setNotification(null);
+              setLeftUser(null);
+            }, 4000);
+          }
+        }
+        
         setRoom(currentRoom);
         setPreviousParticipantCount(currentRoom.participants.length);
       } else {
@@ -81,7 +104,45 @@ const RoomPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleLeaveRoom = async () => {
+  const handleLeaveRoom = () => {
+    setShowLeaveConfirm(true);
+  };
+
+  const confirmLeaveRoom = async () => {
+    try {
+      setIsLeaving(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_ENDPOINTS.ROOMS}/${roomCode}/leave`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setNotification('You have left the room');
+        setTimeout(() => navigate('/dashboard'), 1500);
+      } else {
+        setError(data.message || 'Failed to leave room');
+        setShowLeaveConfirm(false);
+      }
+    } catch (err) {
+      console.error('Error leaving room:', err);
+      setError('Error leaving room: ' + err.message);
+      setShowLeaveConfirm(false);
+    } finally {
+      setIsLeaving(false);
+    }
+  };
+
+  const cancelLeaveRoom = () => {
+    setShowLeaveConfirm(false);
+  };
+
+  const handleCloseRoom = async () => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_ENDPOINTS.ROOMS}/${roomCode}/close`, {
@@ -92,11 +153,16 @@ const RoomPage = () => {
         }
       });
 
-      if (response.ok) {
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
         navigate('/dashboard');
+      } else {
+        setError(data.message || 'Failed to close room');
       }
     } catch (err) {
-      console.error('Error leaving room:', err);
+      console.error('Error closing room:', err);
+      setError('Error closing room: ' + err.message);
     }
   };
 
@@ -142,6 +208,50 @@ const RoomPage = () => {
       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/5 to-purple-500/10 pointer-events-none"></div>
       <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-radial from-cyan-500/20 to-transparent rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-radial from-purple-500/20 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+
+      {/* Leave Confirmation Modal */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-[#1a1f3a] border border-gray-700 rounded-xl p-8 max-w-md w-full mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center">
+                <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4v2m0 4v2m0-12a9 9 0 110 18 9 9 0 010-18z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold">Leave Room?</h3>
+            </div>
+            <p className="text-gray-300 mb-6">
+              Are you sure you want to leave this room? You can rejoin later using the room code.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={cancelLeaveRoom}
+                disabled={isLeaving}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 text-white py-2 rounded-lg transition-colors font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLeaveRoom}
+                disabled={isLeaving}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 text-white py-2 rounded-lg transition-colors font-semibold flex items-center justify-center gap-2"
+              >
+                {isLeaving ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Leaving...
+                  </>
+                ) : (
+                  'Leave Room'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Notification Popup */}
       {notification && (
@@ -282,13 +392,20 @@ const RoomPage = () => {
                 </button>
               </div>
 
-              {/* Leave Room */}
-              {isHost && (
+              {/* Leave/Close Room */}
+              {isHost ? (
                 <button
-                  onClick={handleLeaveRoom}
+                  onClick={handleCloseRoom}
                   className="w-full mt-6 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors text-sm font-semibold"
                 >
                   Close Room
+                </button>
+              ) : (
+                <button
+                  onClick={handleLeaveRoom}
+                  className="w-full mt-6 bg-orange-600 hover:bg-orange-700 text-white py-2 rounded-lg transition-colors text-sm font-semibold"
+                >
+                  Leave Room
                 </button>
               )}
             </div>

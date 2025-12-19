@@ -1,168 +1,125 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config/api';
+
+import Navbar from './Navbar';
 
 const Profile = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState({ name: 'Alex Johnson', username: 'alexcodes' });
   const [userStats, setUserStats] = useState({
-    problemsSolved: 247,
-    contestsWon: 18,
-    currentStreak: 12,
-    memberSince: 'January 2024'
+    totalProblemsSolved: 0,
+    easySolved: 0,
+    mediumSolved: 0,
+    hardSolved: 0,
+    memberSince: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
   });
+  const [recentProblems, setRecentProblems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const [recentProblems] = useState([
-    {
-      name: 'Two Sum',
-      difficulty: 'Easy',
-      category: 'Arrays',
-      timeSpent: '12 min',
-      timeAgo: '2 hours ago',
-      status: 'solved'
-    },
-    {
-      name: 'Binary Tree Traversal',
-      difficulty: 'Medium',
-      category: 'Trees',
-      timeSpent: '28 min',
-      timeAgo: '5 hours ago',
-      status: 'solved'
-    },
-    {
-      name: 'Dynamic Programming - Knapsack',
-      difficulty: 'Hard',
-      category: 'Dynamic Programming',
-      timeSpent: '45 min',
-      timeAgo: '1 day ago',
-      status: 'solved'
-    },
-    {
-      name: 'Valid Parentheses',
-      difficulty: 'Easy',
-      category: 'Stack',
-      timeSpent: '8 min',
-      timeAgo: '1 day ago',
-      status: 'solved'
-    },
-    {
-      name: 'Merge Intervals',
-      difficulty: 'Medium',
-      category: 'Arrays',
-      timeSpent: '22 min',
-      timeAgo: '2 days ago',
-      status: 'solved'
-    },
-    {
-      name: 'Longest Palindromic Substring',
-      difficulty: 'Medium',
-      category: 'Strings',
-      timeSpent: '35 min',
-      timeAgo: '2 days ago',
-      status: 'solved'
-    },
-    {
-      name: 'Maximum Subarray',
-      difficulty: 'Medium',
-      category: 'Arrays',
-      timeSpent: '18 min',
-      timeAgo: '5 days ago',
-      status: 'solved'
-    },
-    {
-      name: 'N-Queens Problem',
-      difficulty: 'Hard',
-      category: 'Backtracking',
-      timeSpent: '60 min',
-      timeAgo: '6 days ago',
-      status: 'solved'
-    }
-  ]);
+  const [contestHistory, setContestHistory] = useState([]);
 
-  const [contestHistory] = useState([
-    {
-      name: 'Sarah Chen',
-      username: 'sarahdev',
-      score: '3-2',
-      problems: 5,
-      duration: '45 min',
-      status: 'Won',
-      timeAgo: 'Today',
-      avatar: null
-    },
-    {
-      name: 'Mike Torres',
-      username: 'miket',
-      score: '4-1',
-      problems: 5,
-      duration: '38 min',
-      status: 'Won',
-      timeAgo: 'Yesterday',
-      avatar: null
-    },
-    {
-      name: 'Emma Wilson',
-      username: 'emmaw',
-      score: '2-3',
-      problems: 5,
-      duration: '50 min',
-      status: 'Lost',
-      timeAgo: '2 days ago',
-      avatar: null
-    },
-    {
-      name: 'David Park',
-      username: 'dpark',
-      score: '5-0',
-      problems: 5,
-      duration: '42 min',
-      status: 'Won',
-      timeAgo: '3 days ago',
-      avatar: null
-    },
-    {
-      name: 'Lisa Anderson',
-      username: 'lisaa',
-      score: '3-1',
-      problems: 4,
-      duration: '35 min',
-      status: 'Won',
-      timeAgo: '4 days ago',
-      avatar: null
-    },
-    {
-      name: 'James Lee',
-      username: 'jameslee',
-      score: '1-3',
-      problems: 4,
-      duration: '48 min',
-      status: 'Lost',
-      timeAgo: '5 days ago',
-      avatar: null
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+
+      // Get user from localStorage
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setUser(parsedUser);
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+        }
+      }
+
+      // Fetch user stats from backend
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/');
+        return;
+      }
+
+      // Get current user ID from auth
+      const authResponse = await fetch('http://localhost:3001/api/auth/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!authResponse.ok) {
+        navigate('/');
+        return;
+      }
+
+      const authData = await authResponse.json();
+      // Handle both possible structures (data or user property)
+      const userData = authData.data || authData.user;
+      const userId = userData._id || userData.id;
+      console.log('📊 Fetching stats for user:', userId);
+      // Update user state with ID if not present
+      setUser(prev => ({ ...prev, _id: userId }));
+
+      // Fetch user stats
+      const statsResponse = await fetch(`http://localhost:3001/api/user/${userId}/stats`);
+      const statsData = await statsResponse.json();
+      console.log('📊 Stats API Response:', statsData);
+
+      if (statsData.success) {
+        console.log('✅ Stats received:', statsData.data.stats);
+        setUserStats({
+          totalProblemsSolved: statsData.data.stats.totalProblemsSolved || 0,
+          easySolved: statsData.data.stats.easySolved || 0,
+          mediumSolved: statsData.data.stats.mediumSolved || 0,
+          hardSolved: statsData.data.stats.hardSolved || 0,
+          memberSince: new Date(statsData.data.user.memberSince).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+        });
+
+        // Set contest history from API
+        if (statsData.data.battles) {
+          setContestHistory(statsData.data.battles);
+        }
+      } else {
+        console.error('❌ Stats API returned error:', statsData);
+      }
+
+      // Fetch solved problems from user-solved collection
+      try {
+        const solvedResponse = await fetch(`http://localhost:3001/api/user/${userId}/solved?limit=10`);
+        const solvedData = await solvedResponse.json();
+        console.log('📚 Solved Problems API Response:', solvedData);
+
+        if (solvedData.success && solvedData.data && solvedData.data.length > 0) {
+          const problems = solvedData.data.map(solved => ({
+            name: solved.title || 'Unknown Problem',
+            difficulty: solved.difficulty || 'Medium',
+            category: solved.topic || 'General',
+            timeSpent: solved.timeTaken ? `${Math.round(solved.timeTaken / 1000)} sec` : 'N/A',
+            timeAgo: new Date(solved.solvedAt).toLocaleDateString(),
+            status: 'Accepted',
+            language: solved.language
+          }));
+          console.log('✅ Solved problems received:', problems);
+          setRecentProblems(problems);
+        } else {
+          console.log('ℹ️ No solved problems found');
+          setRecentProblems([]);
+        }
+      } catch (solvedError) {
+        console.error('❌ Error fetching solved problems:', solvedError);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        // Set a default user if parsing fails
-        setUser({ name: 'Alex Johnson', username: 'alexcodes' });
-      }
-    } else {
-      // Set a default user if no user data is found
-      setUser({ name: 'Alex Johnson', username: 'alexcodes' });
-    }
-
-    const token = localStorage.getItem('token');
-    // Comment out token validation for now to test the profile page
-    // if (!token) {
-    //   navigate('/');
-    // }
-  }, [navigate]);
+    console.log('🔄 Profile component mounted, fetching data...');
+    fetchUserData();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -206,17 +163,17 @@ const Profile = () => {
             {/* Logo */}
             <div className="flex items-center gap-2">
               <div className="bg-cyan-500 rounded-lg p-2 flex items-center justify-center">
-                <svg 
-                  className="w-5 h-5 text-white" 
-                  fill="none" 
-                  stroke="currentColor" 
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" 
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
                   />
                 </svg>
               </div>
@@ -225,13 +182,13 @@ const Profile = () => {
 
             {/* Navigation Links */}
             <div className="flex items-center gap-8">
-              <button 
+              <button
                 onClick={() => navigate('/dashboard')}
                 className="text-gray-300 hover:text-white transition-colors bg-none border-none cursor-pointer"
               >
                 Dashboard 🏠
               </button>
-              <button 
+              <button
                 onClick={() => navigate('/problems')}
                 className="text-gray-300 hover:text-white transition-colors bg-none border-none cursor-pointer"
               >
@@ -240,20 +197,38 @@ const Profile = () => {
               <a href="#" className="text-gray-300 hover:text-white transition-colors">
                 Challenges 📋
               </a>
-              <a href="#" className="text-gray-300 hover:text-white transition-colors">
+              <Link
+                to="/leaderboard"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
                 Leaderboard 🏆
-              </a>
+              </Link>
+              <Link
+                to="/about"
+                className="text-gray-300 hover:text-white transition-colors"
+              >
+                About Us 📘
+              </Link>
             </div>
 
             {/* Right Side Buttons */}
             <div className="flex items-center gap-3">
+              <button
+                onClick={fetchUserData}
+                className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors"
+                title="Refresh stats"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
               <button className="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </button>
-              <button 
+              <button
                 onClick={handleLogout}
                 className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition-colors"
               >
@@ -276,9 +251,9 @@ const Profile = () => {
               <div className="w-32 h-32 rounded-full bg-gradient-to-br from-cyan-400 to-purple-500 p-1">
                 <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center overflow-hidden">
                   {user?.profilePicture ? (
-                    <img 
-                      src={user.profilePicture} 
-                      alt="Profile" 
+                    <img
+                      src={user.profilePicture}
+                      alt="Profile"
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -301,7 +276,7 @@ const Profile = () => {
                 {user?.name || user?.username || 'Alex Johnson'}
               </h1>
               <p className="text-gray-400 mb-4">@{user?.username || 'alexcodes'}</p>
-              
+
               {/* Stats Grid */}
               <div className="grid grid-cols-4 gap-6">
                 <div className="text-center">
@@ -313,31 +288,43 @@ const Profile = () => {
                     </div>
                     <span className="text-gray-400 text-sm">Problems Solved</span>
                   </div>
-                  <div className="text-2xl font-bold text-white">{userStats.problemsSolved}</div>
+                  <div className="text-2xl font-bold text-white">{userStats.totalProblemsSolved}</div>
+                </div>
+
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <span className="text-gray-400 text-sm">Easy Solved</span>
+                  </div>
+                  <div className="text-2xl font-bold text-white">{userStats.easySolved}</div>
                 </div>
 
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-1">
                     <div className="w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
                       <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <span className="text-gray-400 text-sm">Contests Won</span>
+                    <span className="text-gray-400 text-sm">Medium Solved</span>
                   </div>
-                  <div className="text-2xl font-bold text-white">{userStats.contestsWon}</div>
+                  <div className="text-2xl font-bold text-white">{userStats.mediumSolved}</div>
                 </div>
 
                 <div className="text-center">
                   <div className="flex items-center justify-center gap-2 mb-1">
-                    <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                    <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center">
                       <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <span className="text-gray-400 text-sm">Current Streak</span>
+                    <span className="text-gray-400 text-sm">Hard Solved</span>
                   </div>
-                  <div className="text-2xl font-bold text-white">{userStats.currentStreak} days</div>
+                  <div className="text-2xl font-bold text-white">{userStats.hardSolved}</div>
                 </div>
 
                 <div className="text-center">
@@ -368,33 +355,43 @@ const Profile = () => {
           </div>
 
           <div className="space-y-4">
-            {recentProblems.map((problem, index) => (
-              <div 
-                key={index}
-                className="bg-[#0f1425] border border-gray-700 rounded-lg p-4 hover:border-cyan-500 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold mb-2">{problem.name}</h3>
-                    <div className="flex items-center gap-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getDifficultyColor(problem.difficulty)}`}>
-                        {problem.difficulty}
-                      </span>
-                      <span className="text-gray-400 text-sm">{problem.category}</span>
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="text-gray-400">Loading...</div>
+              </div>
+            ) : recentProblems.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-gray-400">No problems solved yet. Start solving problems to see them here!</div>
+              </div>
+            ) : (
+              recentProblems.map((problem, index) => (
+                <div
+                  key={index}
+                  className="bg-[#0f1425] border border-gray-700 rounded-lg p-4 hover:border-cyan-500 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold mb-2">{problem.name}</h3>
+                      <div className="flex items-center gap-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getDifficultyColor(problem.difficulty)}`}>
+                          {problem.difficulty}
+                        </span>
+                        <span className="text-gray-400 text-sm">{problem.category}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-2 mb-1">
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <span className="text-gray-300 text-sm">{problem.timeSpent}</span>
+                    <div className="text-right">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-gray-300 text-sm">{problem.timeSpent}</span>
+                      </div>
+                      <div className="text-gray-400 text-xs">{problem.timeAgo}</div>
                     </div>
-                    <div className="text-gray-400 text-xs">{problem.timeAgo}</div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -410,81 +407,126 @@ const Profile = () => {
           </div>
 
           <div className="space-y-4">
-            {contestHistory.map((contest, index) => (
-              <div 
-                key={index}
-                className="bg-[#0f1425] border border-gray-700 rounded-lg p-4 hover:border-cyan-500 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    {/* Status Icon */}
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      contest.status === 'Won' ? 'bg-green-500' : 'bg-red-500'
-                    }`}>
-                      {contest.status === 'Won' ? (
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
+            {contestHistory.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">⚔️</div>
+                <h3 className="text-2xl font-bold text-white mb-2">No Battle History</h3>
+                <p className="text-gray-400 mb-6">
+                  Join your first coding battle to see your history here!
+                </p>
+                <button
+                  onClick={() => navigate('/active-battles')}
+                  className="bg-cyan-500 hover:bg-cyan-600 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 transform hover:scale-105"
+                >
+                  Join a Battle
+                </button>
+              </div>
+            ) : (
+              contestHistory.map((contest, index) => (
+                <div
+                  key={index}
+                  className="bg-[#0f1425] border border-gray-700 rounded-lg p-6 hover:border-cyan-500 transition-all duration-300"
+                >
+                  {/* Header with Problem and Status */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${contest.status === 'Won' ? 'bg-green-500' : 'bg-red-500'
+                        }`}>
+                        {contest.status === 'Won' ? (
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="text-white font-bold text-lg">{contest.questionTitle}</h3>
+                        <div className="flex gap-2 mt-1">
+                          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${getDifficultyColor(contest.questionDifficulty)}`}>
+                            {contest.questionDifficulty}
+                          </span>
+                          <span className="text-gray-400 text-xs">{contest.questionTopic}</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Avatar */}
-                    <div className="w-12 h-12 rounded-full bg-gray-600 flex items-center justify-center overflow-hidden">
-                      {contest.avatar ? (
-                        <img 
-                          src={contest.avatar} 
-                          alt={contest.name} 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                      )}
-                    </div>
+                    {/* Status Badge */}
+                    <span className={`px-4 py-2 rounded-lg font-bold text-sm ${contest.status === 'Won'
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      }`}>
+                      {contest.status}
+                    </span>
+                  </div>
 
-                    {/* User Info */}
-                    <div>
-                      <h3 className="text-lg font-semibold text-white">{contest.name}</h3>
-                      <p className="text-gray-400 text-sm">@{contest.username}</p>
+                  {/* Opponent Info */}
+                  <div className="flex items-center gap-3 mb-4 p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-cyan-500 to-purple-500 p-0.5">
+                      <div className="w-full h-full rounded-full bg-gray-600 flex items-center justify-center overflow-hidden">
+                        {contest.opponentAvatar ? (
+                          <img src={contest.opponentAvatar} alt={contest.opponentName} className="w-full h-full object-cover" />
+                        ) : (
+                          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white font-semibold">{contest.opponentName}</div>
+                      <div className="text-gray-400 text-sm">@{contest.opponentUsername}</div>
+                    </div>
+                    <div className="text-gray-400 text-xs">
+                      vs
                     </div>
                   </div>
 
-                  {/* Contest Stats */}
-                  <div className="flex items-center gap-8">
-                    <div className={`px-3 py-1 rounded text-sm font-semibold ${
-                      contest.status === 'Won' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                    }`}>
-                      {contest.status}
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-4 gap-4 mb-4">
+                    <div className="text-center p-3 bg-gray-800/30 rounded">
+                      <div className="text-gray-400 text-xs mb-1">Your Score</div>
+                      <div className="text-white font-bold text-lg">{contest.myScore || '-'}</div>
                     </div>
-                    
-                    <div className="text-center">
-                      <div className="text-gray-300 text-sm">Score</div>
-                      <div className="text-white font-semibold">{contest.score}</div>
+                    <div className="text-center p-3 bg-gray-800/30 rounded">
+                      <div className="text-gray-400 text-xs mb-1">Opponent</div>
+                      <div className="text-white font-bold text-lg">{contest.opponentScore || '-'}</div>
                     </div>
-                    
-                    <div className="text-center">
-                      <div className="text-gray-300 text-sm">Problems</div>
-                      <div className="text-white font-semibold">{contest.problems}</div>
+                    <div className="text-center p-3 bg-gray-800/30 rounded">
+                      <div className="text-gray-400 text-xs mb-1">Duration</div>
+                      <div className="text-white font-semibold text-sm">{contest.duration}</div>
                     </div>
-                    
-                    <div className="text-center">
-                      <div className="text-gray-300 text-sm">Duration</div>
-                      <div className="text-white font-semibold">{contest.duration}</div>
+                    <div className="text-center p-3 bg-gray-800/30 rounded">
+                      <div className="text-gray-400 text-xs mb-1">XP Earned</div>
+                      <div className="text-green-400 font-bold">+{contest.xpEarned}</div>
                     </div>
-                    
-                    <div className="text-center min-w-[80px]">
-                      <div className="text-gray-400 text-sm">{contest.timeAgo}</div>
-                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="pt-4 border-t border-gray-700/50 flex justify-between items-center text-sm">
+                    <span className="text-gray-400">
+                      <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {contest.timeAgo}
+                    </span>
+                    <span className="text-gray-400">
+                      Rank: <span className="text-white font-semibold">#{contest.rank}</span>
+                    </span>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
+        </div>
+        {/* Debug Info */}
+        <div className="mt-8 p-4 bg-black/50 rounded text-xs font-mono text-gray-400">
+          <p>Debug Info:</p>
+          <p>User ID: {user?._id || 'Not set'}</p>
+          <p>Stats: {JSON.stringify(userStats)}</p>
+          <p>Recent Problems: {recentProblems.length}</p>
         </div>
       </div>
     </div>

@@ -25,10 +25,11 @@ const QuestionSelectionModal = ({ isOpen, onClose, onSelectQuestion }) => {
 
   const fetchTopics = async () => {
     try {
-      const response = await fetch(`${API_ENDPOINTS.QUESTIONS}/topics/all`);
+      const response = await fetch(API_ENDPOINTS.PROBLEMS);
       const data = await response.json();
-      if (data.success) {
-        setTopics(['All', ...data.data]);
+      if (data.success && data.data) {
+        const uniqueTopics = [...new Set(data.data.map(problem => problem.topic))];
+        setTopics(['All', ...uniqueTopics]);
       }
     } catch (error) {
       console.error('Error fetching topics:', error);
@@ -38,37 +39,34 @@ const QuestionSelectionModal = ({ isOpen, onClose, onSelectQuestion }) => {
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      let url = API_ENDPOINTS.QUESTIONS;
-      const params = new URLSearchParams();
+      const response = await fetch(API_ENDPOINTS.PROBLEMS);
 
-      if (selectedTopic !== 'All') {
-        params.append('topic', selectedTopic);
-      }
-
-      if (selectedDifficulty !== 'All') {
-        params.append('difficulty', selectedDifficulty);
-      }
-
-      if (searchTerm) {
-        params.append('search', searchTerm);
-      }
-
-      if (params.toString()) {
-        url += '?' + params.toString();
-      }
-
-      console.log('Fetching from:', url);
-      const response = await fetch(url);
-      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      console.log('Questions response:', data);
-      
-      if (data.success) {
-        setQuestions(data.data);
+
+      if (data.success && data.data) {
+        let filteredProblems = data.data;
+
+        if (selectedTopic !== 'All') {
+          filteredProblems = filteredProblems.filter(problem => problem.topic === selectedTopic);
+        }
+
+        if (selectedDifficulty !== 'All') {
+          filteredProblems = filteredProblems.filter(problem => problem.difficulty === selectedDifficulty);
+        }
+
+        if (searchTerm) {
+          const lowerSearchTerm = searchTerm.toLowerCase();
+          filteredProblems = filteredProblems.filter(problem =>
+            problem.title.toLowerCase().includes(lowerSearchTerm) ||
+            problem.statement?.toLowerCase().includes(lowerSearchTerm)
+          );
+        }
+
+        setQuestions(filteredProblems);
       } else {
         console.error('API returned success: false', data);
         setQuestions([]);
@@ -98,14 +96,19 @@ const QuestionSelectionModal = ({ isOpen, onClose, onSelectQuestion }) => {
     try {
       setCreatingRoom(true);
       const token = localStorage.getItem('token');
-      
+      const problemId = question._id || question.problemId;
+
+      if (!problemId) {
+        throw new Error('No problem identifier found');
+      }
+
       const response = await fetch(API_ENDPOINTS.ROOMS, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ questionId: question._id })
+        body: JSON.stringify({ questionId: problemId })
       });
 
       const data = await response.json();
@@ -219,26 +222,28 @@ const QuestionSelectionModal = ({ isOpen, onClose, onSelectQuestion }) => {
                         {question.title}
                       </h3>
                       <p className="text-gray-400 text-sm mb-3 line-clamp-2">
-                        {question.description}
+                        {question.statement}
                       </p>
                       <div className="flex items-center gap-3 flex-wrap">
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getDifficultyColor(question.difficulty)}`}>
                           {question.difficulty}
                         </span>
-                        {question.topics.map((topic) => (
-                          <span
-                            key={topic}
-                            className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300"
-                          >
-                            {topic}
+                        {question.topic && (
+                          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300">
+                            {question.topic}
                           </span>
-                        ))}
+                        )}
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300">
+                          {question.testCases?.length || 0} test cases
+                        </span>
                       </div>
                     </div>
                     <div className="ml-4 text-right">
                       <div className="text-gray-400 text-sm">
-                        <div>{question.submissions} submissions</div>
-                        <div className="text-cyan-400">{question.acceptanceRate}% AC</div>
+                        <div>Problem #{question.problemId}</div>
+                        {question.acceptanceRate != null && (
+                          <div className="text-cyan-400">{question.acceptanceRate}% AC</div>
+                        )}
                       </div>
                     </div>
                   </div>

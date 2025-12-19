@@ -172,9 +172,13 @@ export const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
 
+    const userProfile = user.getPublicProfile();
+    // Ensure _id is available as _id (getPublicProfile returns id)
+    userProfile._id = user._id;
+
     res.status(200).json({
       success: true,
-      user: user.getPublicProfile()
+      data: userProfile
     });
   } catch (error) {
     console.error('Get me error:', error);

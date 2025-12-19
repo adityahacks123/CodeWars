@@ -10,8 +10,11 @@ export const API_ENDPOINTS = {
   GOOGLE_AUTH: `${API_BASE_URL}/auth/google`,
   AUTH_STATUS: `${API_BASE_URL}/auth/status`,
   
-  // Questions endpoints
+  // Questions endpoints (legacy)
   QUESTIONS: `${API_BASE_URL}/questions`,
+
+  // Problems endpoints (new problem bank)
+  PROBLEMS: `${API_BASE_URL}/problems`,
   
   // Rooms endpoints
   ROOMS: `${API_BASE_URL}/rooms`,

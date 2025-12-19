@@ -18,6 +18,14 @@ import authRoutes from './routes/authRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
 import codeRoutes from './routes/codeRoutes.js';
 import roomRoutes from './routes/roomRoutes.js';
+import problemRoutes from './routes/problemRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import submissionsRoutes from './routes/submissionsRoutes.js';
+
+// Import models to register them with Mongoose
+import User from './models/User.js';
+import UserSolved from './models/UserSolved.js';
+import Problem from './models/Problem.js';
 
 // Connect to database
 connectDB();
@@ -67,6 +75,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/code', codeRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/problems', problemRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/submissions', submissionsRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -116,7 +127,13 @@ app.use((err, req, res, next) => {
 // Start server
 const PORT = process.env.PORT || 3001;
 
-app.listen(PORT, () => {
+import { createServer } from 'http';
+import { initializeSocket } from './socketHandlers.js';
+
+const httpServer = createServer(app);
+const io = initializeSocket(httpServer);
+
+httpServer.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║

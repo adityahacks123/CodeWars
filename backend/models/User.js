@@ -44,6 +44,20 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  notificationPreferences: {
+    emailNotifications: {
+      type: Boolean,
+      default: true
+    },
+    pushNotifications: {
+      type: Boolean,
+      default: true
+    },
+    marketingEmails: {
+      type: Boolean,
+      default: false
+    }
+  },
   lastLogin: {
     type: Date,
     default: Date.now
@@ -62,6 +76,10 @@ const userSchema = new mongoose.Schema({
     default: 0
   },
   hardSolved: {
+    type: Number,
+    default: 0
+  },
+  score: {
     type: Number,
     default: 0
   },
@@ -87,6 +105,9 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Indexes
+userSchema.index({ score: -1 });
 
 // Hash password before saving (only for local auth)
 userSchema.pre('save', async function (next) {
@@ -159,6 +180,9 @@ userSchema.methods.recordSubmission = async function (questionId, verdict, diffi
         } else if (difficulty === 'Hard') {
           this.hardSolved += 1;
         }
+
+        // Update score
+        this.score = (this.easySolved * 10) + (this.mediumSolved * 30) + (this.hardSolved * 50);
       }
 
       // Always save to UserSolved collection (even if already solved before)

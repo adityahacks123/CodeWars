@@ -20,6 +20,14 @@ const battleResultSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
     }],
+    scores: [{
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        },
+        passedTests: Number,
+        totalTests: Number
+    }],
     duration: {
         type: Number, // in seconds
         required: true

@@ -20,6 +20,9 @@ import codeRoutes from './routes/codeRoutes.js';
 import roomRoutes from './routes/roomRoutes.js';
 import problemRoutes from './routes/problemRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import submissionsRoutes from './routes/submissionsRoutes.js';
 
 // Import models to register them with Mongoose
@@ -76,7 +79,14 @@ app.use('/api/questions', questionRoutes);
 app.use('/api/code', codeRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/problems', problemRoutes);
-app.use('/api/user', userRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/user', userRoutes); // Alias for legacy frontend calls
+app.use('/api/upload', uploadRoutes);
+
+// Serve static files from uploads directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/submissions', submissionsRoutes);
 
 // Health check route

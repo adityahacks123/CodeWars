@@ -13,14 +13,14 @@ function getDetailedError(statusId, compileOutput, stderr, stdout) {
     case 3:
       return { type: 'SUCCESS', message: 'Code executed successfully' };
     case 4:
-      return { 
-        type: 'WRONG_ANSWER', 
+      return {
+        type: 'WRONG_ANSWER',
         message: 'Wrong Answer',
         details: stdout || 'Your code ran but produced incorrect output'
       };
     case 5:
-      return { 
-        type: 'TIME_LIMIT_EXCEEDED', 
+      return {
+        type: 'TIME_LIMIT_EXCEEDED',
         message: 'Time Limit Exceeded',
         details: 'Your code took too long to run. Try optimizing your algorithm.'
       };
@@ -37,33 +37,33 @@ function getDetailedError(statusId, compileOutput, stderr, stdout) {
           };
         }
       }
-      return { 
-        type: 'COMPILATION_ERROR', 
+      return {
+        type: 'COMPILATION_ERROR',
         message: 'Compilation Error',
         details: compileOutput || 'Your code has syntax errors'
       };
     case 7:
-      return { 
-        type: 'RUNTIME_ERROR', 
+      return {
+        type: 'RUNTIME_ERROR',
         message: 'Runtime Error',
         details: stderr || 'Your code crashed during execution',
         fixSuggestions: getRuntimeFixSuggestions(stderr)
       };
     case 8:
-      return { 
-        type: 'MEMORY_LIMIT_EXCEEDED', 
+      return {
+        type: 'MEMORY_LIMIT_EXCEEDED',
         message: 'Memory Limit Exceeded',
         details: 'Your code used too much memory. Try optimizing memory usage.'
       };
     case 9:
-      return { 
-        type: 'INTERNAL_ERROR', 
+      return {
+        type: 'INTERNAL_ERROR',
         message: 'Internal Server Error',
         details: 'Something went wrong on our end. Please try again.'
       };
     default:
-      return { 
-        type: 'UNKNOWN_ERROR', 
+      return {
+        type: 'UNKNOWN_ERROR',
         message: 'Unknown Error',
         details: stderr || stdout || 'An unknown error occurred'
       };
@@ -73,7 +73,7 @@ function getDetailedError(statusId, compileOutput, stderr, stdout) {
 // Helper function to get fix suggestions for compilation errors
 function getFixSuggestions(errors) {
   const suggestions = [];
-  
+
   errors.forEach(error => {
     if (error.includes("'vector' has not been declared")) {
       suggestions.push("Add '#include <vector>' at the top of your file");
@@ -93,14 +93,14 @@ function getFixSuggestions(errors) {
       suggestions.push("Check for missing parentheses or brackets");
     }
   });
-  
+
   return suggestions.length > 0 ? suggestions : ['Check your syntax and includes'];
 }
 
 // Helper function to get fix suggestions for runtime errors
 function getRuntimeFixSuggestions(stderr) {
   const suggestions = [];
-  
+
   if (stderr) {
     if (stderr.includes("segmentation fault")) {
       suggestions.push("Check for null pointer dereference or array out of bounds");
@@ -112,7 +112,7 @@ function getRuntimeFixSuggestions(stderr) {
       suggestions.push("Check for division by zero before performing division");
     }
   }
-  
+
   return suggestions.length > 0 ? suggestions : ['Check your code logic and edge cases'];
 }
 
@@ -122,10 +122,10 @@ function wrapCppCode(code) {
   if (code.includes('int main()') || code.includes('int main(')) {
     return code;
   }
-  
+
   // Build includes at the top
   let includes = '';
-  
+
   // Always add essential headers
   includes += '#include <iostream>\n';
   includes += '#include <vector>\n';
@@ -141,19 +141,19 @@ function wrapCppCode(code) {
   includes += '#include <set>\n';
   includes += '#include <climits>\n';
   includes += '#include <cmath>\n';
-  
+
   // Remove existing includes from code to avoid duplicates
   let codeWithoutIncludes = code.replace(/#include\s*<[^>]+>/g, '').trim();
-  
+
   // Remove existing using namespace std to avoid duplicates
   codeWithoutIncludes = codeWithoutIncludes.replace(/using\s+namespace\s+std\s*;/g, '').trim();
-  
+
   // Add using namespace std
   includes += 'using namespace std;\n';
-  
+
   // Combine everything
   let finalCode = includes + '\n' + codeWithoutIncludes;
-  
+
   // Wrap the code with a simple main() function
   return finalCode + `
 
@@ -168,7 +168,7 @@ function getJudge0Config() {
   const JUDGE0_API_URL = process.env.JUDGE0_API_URL || 'https://judge0-ce.p.rapidapi.com';
   const JUDGE0_API_KEY = process.env.JUDGE0_API_KEY;
   const JUDGE0_HOST = process.env.JUDGE0_HOST || 'judge0-ce.p.rapidapi.com';
-  
+
   return { JUDGE0_API_URL, JUDGE0_API_KEY, JUDGE0_HOST };
 }
 
@@ -177,14 +177,14 @@ let configLogged = false;
 function logConfig() {
   if (configLogged) return;
   configLogged = true;
-  
+
   const { JUDGE0_API_KEY, JUDGE0_API_URL, JUDGE0_HOST } = getJudge0Config();
-  
+
   console.log('🔍 Debug - Environment Variables:');
   console.log(`   JUDGE0_API_KEY: ${JUDGE0_API_KEY ? '✓ Set' : '✗ Not set'}`);
   console.log(`   JUDGE0_API_URL: ${JUDGE0_API_URL}`);
   console.log(`   JUDGE0_HOST: ${JUDGE0_HOST}`);
-  
+
   if (JUDGE0_API_KEY) {
     console.log('✅ Judge0 API Key loaded successfully');
     console.log(`✅ Judge0 API URL: ${JUDGE0_API_URL}`);
@@ -214,7 +214,7 @@ export const executeCode = async (req, res) => {
   try {
     // Log config on first use
     logConfig();
-    
+
     const { code, language, input } = req.body;
 
     // Validate input
@@ -265,7 +265,7 @@ export const executeCode = async (req, res) => {
       } else {
         // Use Judge0 API for other languages
         const { JUDGE0_API_KEY, JUDGE0_API_URL, JUDGE0_HOST } = getJudge0Config();
-        
+
         if (!JUDGE0_API_KEY) {
           return res.status(400).json({
             success: false,
@@ -278,17 +278,17 @@ export const executeCode = async (req, res) => {
           console.log(`   Language ID: ${languageId}`);
           console.log(`   API URL: ${JUDGE0_API_URL}`);
           console.log(`   API Key: ${JUDGE0_API_KEY ? 'SET' : 'NOT SET'}`);
-          
+
           // Wrap C++ code with main() if needed
           let finalCode = code;
           if (language === 'cpp') {
             finalCode = wrapCppCode(code);
           }
-          
+
           // Encode code and input to base64
           const encodedCode = encodeBase64(finalCode);
           const encodedInput = encodeBase64(input || '');
-          
+
           // Submit code to Judge0 with base64 encoding
           const response = await axios.post(
             `${JUDGE0_API_URL}/submissions?base64_encoded=true&wait=true`,
@@ -316,7 +316,7 @@ export const executeCode = async (req, res) => {
             result.stderr,
             result.stdout
           );
-          
+
           if (errorInfo.type === 'SUCCESS') {
             output = result.stdout || 'Code executed successfully';
           } else {
@@ -350,234 +350,261 @@ export const executeCode = async (req, res) => {
   }
 };
 
+// Helper function to generate C++ driver code
+function generateCppDriver(userCode, problem) {
+  const { methodName, parameters, returnType } = problem.functionSignature;
+
+  let includes = `#include <iostream>
+#include <vector>
+#include <string>
+#include <algorithm>
+#include <map>
+#include <set>
+#include <unordered_map>
+#include <unordered_set>
+#include <queue>
+#include <stack>
+#include <cmath>
+#include <climits>
+#include <iomanip>
+
+using namespace std;
+
+`;
+
+  // Clean user code (remove includes and using namespace std to avoid duplicates)
+  let cleanUserCode = userCode.replace(/#include\s*<[^>]+>/g, '').replace(/using\s+namespace\s+std\s*;/g, '').trim();
+
+  let mainFunction = `
+int main() {
+    Solution sol;
+    
+    // Read input based on parameters
+`;
+
+  // Generate input reading logic
+  parameters.forEach((param, index) => {
+    const paramName = `p${index}`;
+    const paramType = param.type;
+
+    if (paramType === 'int') {
+      mainFunction += `
+    int ${paramName};
+    if (!(cin >> ${paramName})) return 0;
+`;
+    } else if (paramType === 'long') {
+      mainFunction += `
+    long long ${paramName};
+    if (!(cin >> ${paramName})) return 0;
+`;
+    } else if (paramType === 'double') {
+      mainFunction += `
+    double ${paramName};
+    if (!(cin >> ${paramName})) return 0;
+`;
+    } else if (paramType === 'string') {
+      mainFunction += `
+    string ${paramName};
+    if (!(cin >> ${paramName})) return 0;
+`;
+    } else if (paramType === 'array<int>' || paramType === 'vector<int>') {
+      mainFunction += `
+    int n${index};
+    if (!(cin >> n${index})) return 0;
+    vector<int> ${paramName}(n${index});
+    for(int i=0; i<n${index}; i++) {
+        cin >> ${paramName}[i];
+    }
+`;
+    }
+    // Add more types as needed
+  });
+
+  // Generate function call
+  const args = parameters.map((_, i) => `p${i}`).join(', ');
+
+  mainFunction += `
+    // Call solution
+    ${returnType} result = sol.${methodName}(${args});
+    
+    // Print result
+    cout << result << endl;
+    
+    return 0;
+}
+`;
+
+  return includes + cleanUserCode + mainFunction;
+}
+
 // @desc    Submit code and validate against test cases
 // @route   POST /api/code/submit
 // @access  Private
 export const submitCode = async (req, res) => {
   try {
     const { code, language, questionId } = req.body;
-    const userId = req.user?.id || 'default_user'; // Get user ID from auth middleware with fallback
+    const userId = req.user?.id || 'default_user';
 
-    // Validate input
     if (!code || !language) {
-      return res.status(400).json({
-        success: false,
-        error: 'Code and language are required'
-      });
+      return res.status(400).json({ success: false, error: 'Code and language are required' });
     }
 
-    let output = '';
-    let error = '';
+    // Fetch problem details
+    const problem = await Problem.findById(questionId);
+    if (!problem) {
+      return res.status(404).json({ success: false, error: 'Problem not found' });
+    }
+
     let testResults = [];
     let passedTests = 0;
-    let totalTests = 0;
-    let status = 'PENDING';
+    let totalTests = problem.testCases.length;
+    let overallStatus = 'PENDING';
+    let overallOutput = '';
+    let overallError = '';
 
-    try {
-      if (language === 'javascript') {
-        // Execute JavaScript locally
-        const wrappedCode = `
-          (function() {
-            let output = '';
-            const console = {
-              log: function(...args) {
-                let line = args.map(arg => {
-                  if (typeof arg === 'object') {
-                    return JSON.stringify(arg);
-                  }
-                  return String(arg);
-                }).join(' ');
-                output += line + '\\n';
-              }
-            };
-            
-            ${code}
-            
-            return output;
-          })()
-        `;
+    // If no test cases, fail gracefully
+    if (totalTests === 0) {
+      return res.status(400).json({ success: false, error: 'No test cases found for this problem' });
+    }
 
-        const func = new Function(wrappedCode);
-        output = func() || 'Code executed successfully';
-      } else {
-        // Use Judge0 API for other languages
-        const { JUDGE0_API_KEY, JUDGE0_API_URL, JUDGE0_HOST } = getJudge0Config();
-        
-        if (!JUDGE0_API_KEY) {
-          return res.status(400).json({
-            success: false,
-            error: `${language.charAt(0).toUpperCase() + language.slice(1)} execution requires Judge0 API key. Please contact admin.`
-          });
-        }
+    // Prepare driver code once
+    let finalCode = code;
+    if (language === 'cpp') {
+      finalCode = generateCppDriver(code, problem);
+    }
+    // TODO: Add driver generation for other languages
 
-        const languageId = languageMap[language];
-        if (!languageId) {
-          return res.status(400).json({
-            success: false,
-            error: `Language '${language}' is not supported`
-          });
-        }
+    const { JUDGE0_API_KEY, JUDGE0_API_URL, JUDGE0_HOST } = getJudge0Config();
+    const languageId = languageMap[language];
 
-        try {
-          console.log(`📤 Submitting ${language} code to Judge0...`);
-          
-          // Wrap C++ code with main() if needed
-          let finalCode = code;
-          if (language === 'cpp') {
-            finalCode = wrapCppCode(code);
-          }
-          
-          // Encode code to base64
-          const encodedCode = encodeBase64(finalCode);
-          
-          const response = await axios.post(
-            `${JUDGE0_API_URL}/submissions?base64_encoded=true&wait=true`,
-            {
-              source_code: encodedCode,
-              language_id: languageId,
-              stdin: ''
-            },
-            {
-              headers: {
-                'X-RapidAPI-Key': JUDGE0_API_KEY,
-                'X-RapidAPI-Host': JUDGE0_HOST,
-                'Content-Type': 'application/json'
-              }
+    if (!languageId) {
+      return res.status(400).json({ success: false, error: `Language '${language}' is not supported` });
+    }
+
+    // Run test cases sequentially
+    for (let i = 0; i < totalTests; i++) {
+      const testCase = problem.testCases[i];
+
+      try {
+        const encodedCode = encodeBase64(finalCode);
+        const encodedInput = encodeBase64(testCase.input);
+
+        const response = await axios.post(
+          `${JUDGE0_API_URL}/submissions?base64_encoded=true&wait=true`,
+          {
+            source_code: encodedCode,
+            language_id: languageId,
+            stdin: encodedInput
+          },
+          {
+            headers: {
+              'X-RapidAPI-Key': JUDGE0_API_KEY,
+              'X-RapidAPI-Host': JUDGE0_HOST,
+              'Content-Type': 'application/json'
             }
-          );
-
-          const result = response.data;
-          console.log(`✅ Judge0 Response Status: ${result.status.id}`);
-
-          // Handle different status codes with detailed error messages
-          const errorInfo = getDetailedError(
-            result.status.id,
-            result.compile_output,
-            result.stderr,
-            result.stdout
-          );
-          
-          if (errorInfo.type === 'SUCCESS') {
-            output = result.stdout || 'Code executed successfully';
-          } else {
-            error = errorInfo;
           }
-        } catch (apiError) {
-          console.error('❌ Judge0 API Error:', apiError.message);
-          error = `Error executing ${language}: ${apiError.message}`;
+        );
+
+        const result = response.data;
+        const actualOutput = result.stdout ? result.stdout.trim() : '';
+        const expectedOutput = testCase.output.trim();
+        const isCorrect = actualOutput === expectedOutput;
+
+        if (isCorrect) passedTests++;
+
+        testResults.push({
+          input: testCase.input,
+          expectedOutput: expectedOutput,
+          actualOutput: actualOutput,
+          passed: isCorrect,
+          status: result.status.description,
+          error: result.stderr || result.compile_output
+        });
+
+        // Capture first error or output for overall status
+        if (!overallOutput && actualOutput) overallOutput = actualOutput;
+        if (!overallError && (result.stderr || result.compile_output)) overallError = result.stderr || result.compile_output;
+
+        // If compilation error, stop immediately
+        if (result.status.id === 6) { // Compilation Error
+          overallStatus = 'COMPILATION_ERROR';
+          overallError = result.compile_output;
+          break;
         }
+
+      } catch (err) {
+        console.error(`Error running test case ${i + 1}:`, err.message);
+        testResults.push({
+          input: testCase.input,
+          expectedOutput: testCase.output,
+          actualOutput: '',
+          passed: false,
+          status: 'INTERNAL_ERROR',
+          error: err.message
+        });
       }
-    } catch (err) {
-      error = err.message;
     }
 
-    // Determine status based on result
-    if (error && typeof error === 'object') {
-      status = error.type;
-    } else if (error) {
-      status = 'ERROR';
+    // Determine final status
+    if (overallStatus === 'COMPILATION_ERROR') {
+      // Already set
+    } else if (passedTests === totalTests) {
+      overallStatus = 'SUCCESS';
     } else {
-      status = 'SUCCESS';
+      overallStatus = 'WRONG_ANSWER'; // Or PARTIAL_SUCCESS
     }
 
-    // Save submission to database
+    // Save submission
     try {
       const submission = new Submission({
         userId,
-        problemId: questionId || 'default_problem', // Ensure problemId is not undefined
+        problemId: questionId,
         code,
         language,
-        status,
-        output: output || undefined,
-        error: error ? (typeof error === 'object' ? error : { message: error }) : undefined,
+        status: overallStatus,
+        output: overallOutput,
+        error: overallError ? { message: overallError } : undefined,
         testResults,
         passedTests,
         totalTests,
-        executionTime: 0, // TODO: Get from Judge0 response
-        memoryUsage: 0, // TODO: Get from Judge0 response
+        executionTime: 0,
+        memoryUsage: 0
       });
-
       await submission.save();
-      console.log(`✅ Submission saved for user ${userId}, problem ${questionId}`);
 
-      // Update user stats if submission is successful
-      if (status === 'SUCCESS' && userId !== 'default_user') {
-        try {
-          const User = (await import('../models/User.js')).default;
-          const Problem = (await import('../models/Problem.js')).default;
-          
-          console.log(`📊 Attempting to update stats for user: ${userId}, problem: ${questionId}`);
-          
-          const user = await User.findById(userId);
-          if (!user) {
-            console.error(`❌ User not found: ${userId}`);
-            return;
-          }
-          
-          const problem = await Problem.findById(questionId);
-          if (!problem) {
-            console.error(`❌ Problem not found: ${questionId}`);
-            console.log(`📝 Available problem fields: _id, title, difficulty, topic`);
-            // Try to find problem by other means
-            const allProblems = await Problem.find().limit(1);
-            if (allProblems.length > 0) {
-              console.log(`📝 Sample problem ID format: ${allProblems[0]._id}`);
-            }
-            return;
-          }
-          
-          const verdict = status === 'SUCCESS' ? 'Accepted' : 'Wrong Answer';
-          console.log(`📝 Recording submission: verdict=${verdict}, difficulty=${problem.difficulty}`);
-          
-          const updatedUser = await user.recordSubmission(
+      // Update stats if success
+      if (overallStatus === 'SUCCESS' && userId !== 'default_user') {
+        const User = (await import('../models/User.js')).default;
+        const user = await User.findById(userId);
+        if (user) {
+          await user.recordSubmission(
             questionId,
-            verdict,
+            'Accepted',
             problem.difficulty,
             language,
-            0, // timeTaken - can be calculated if needed
+            0,
             code,
-            problem.title, // problemTitle
-            problem.topic  // topic
+            problem.title,
+            problem.topic
           );
-          console.log(`✅ User stats updated for ${userId}`);
-          console.log(`   Total Solved: ${updatedUser.totalProblemsSolved}`);
-          console.log(`   Easy: ${updatedUser.easySolved}, Medium: ${updatedUser.mediumSolved}, Hard: ${updatedUser.hardSolved}`);
-          
-          // Verify by fetching fresh from DB
-          const verifyUser = await User.findById(userId);
-          console.log(`🔍 Verification - Fresh fetch from DB:`);
-          console.log(`   Total Solved: ${verifyUser.totalProblemsSolved}`);
-          console.log(`   Easy: ${verifyUser.easySolved}, Medium: ${verifyUser.mediumSolved}, Hard: ${verifyUser.hardSolved}`);
-        } catch (statsError) {
-          console.error('⚠️ Error updating user stats:', statsError);
-          console.error('Stack:', statsError.stack);
-          // Continue even if stats update fails
         }
       }
-    } catch (saveError) {
-      console.error('❌ Error saving submission:', saveError);
-      // Continue with response even if saving fails
+    } catch (saveErr) {
+      console.error('Error saving submission:', saveErr);
     }
 
-    if (error) {
-      res.status(200).json({
-        success: false,
-        error: error,
-        submissionSaved: true
-      });
-    } else {
-      res.status(200).json({
-        success: true,
-        message: 'Code executed successfully',
-        output: output,
-        testResults: {
-          passed: passedTests,
-          total: totalTests,
-          results: testResults
-        },
-        submissionSaved: true
-      });
-    }
+    res.status(200).json({
+      success: true,
+      message: overallStatus === 'SUCCESS' ? 'All test cases passed!' : 'Some test cases failed',
+      output: overallOutput,
+      testResults: {
+        passed: passedTests,
+        total: totalTests,
+        results: testResults
+      },
+      submissionSaved: true,
+      error: overallError
+    });
 
   } catch (error) {
     console.error('Code submission error:', error);

@@ -24,10 +24,17 @@ router.post('/', protect, async (req, res) => {
 
     // Create new room
     const roomCode = await Room.generateRoomCode();
+
+    // Determine max participants based on type
+    const type = req.body.type || '1vs1';
+    const maxParticipants = type === '1vs1' ? 2 : (req.body.maxParticipants || 10);
+
     const room = new Room({
       roomCode,
       question: questionId,
       host: req.user._id,
+      type,
+      maxParticipants,
       participants: [{
         user: req.user._id
       }]
@@ -61,7 +68,7 @@ router.get('/active', protect, async (req, res) => {
   try {
     const rooms = await Room.find({
       isActive: true,
-      status: { $in: ['waiting', 'coding'] } // Fetch both waiting and ongoing battles
+      status: { $nin: ['completed', 'abandoned'] } // Explicitly exclude finished battles
     })
       .populate('question', 'title difficulty topic')
       .populate('host', 'name avatar')
@@ -70,48 +77,68 @@ router.get('/active', protect, async (req, res) => {
 
     // Transform data for frontend
     // Transform data for frontend
-    const formattedRooms = rooms.map(room => {
+    // Transform data for frontend and check for expired rooms
+    const formattedRooms = [];
+    const expiredRoomIds = [];
+
+    for (const room of rooms) {
       // Calculate time left (45 minutes default duration)
       let timeLeft = '45:00';
+      let isExpired = false;
 
-      if (room.status === 'coding' && room.startedAt) {
-        const startTime = new Date(room.startedAt).getTime();
+      if (room.status === 'coding') {
+        const startTime = new Date(room.startedAt || room.updatedAt || room.createdAt).getTime();
         const now = Date.now();
         const durationMs = 45 * 60 * 1000; // 45 minutes in ms
         const elapsedMs = now - startTime;
         const remainingMs = Math.max(0, durationMs - elapsedMs);
 
-        const minutes = Math.floor(remainingMs / 60000);
-        const seconds = Math.floor((remainingMs % 60000) / 1000);
-        timeLeft = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        if (remainingMs === 0) {
+          isExpired = true;
+          expiredRoomIds.push(room._id);
+        } else {
+          const minutes = Math.floor(remainingMs / 60000);
+          const seconds = Math.floor((remainingMs % 60000) / 1000);
+          timeLeft = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
       } else if (room.status === 'waiting') {
         timeLeft = 'Waiting...';
       }
 
-      return {
-        id: room._id,
-        roomCode: room.roomCode,
-        title: room.question?.title || 'Unknown Problem',
-        difficulty: room.question?.difficulty || 'Medium',
-        language: 'Multi-language', // Rooms support multiple languages
-        participants: room.participants.length,
-        maxParticipants: 10,
-        timeLeft: timeLeft,
-        status: room.status,
-        prize: `${room.question?.difficulty === 'Hard' ? '100' : room.question?.difficulty === 'Medium' ? '50' : '20'} XP`,
-        participantsList: room.participants.map(p => ({
-          id: p.user._id,
-          name: p.user.name,
-          avatar: p.user.avatar,
-          score: p.passedTests || 0,
-          passedTests: p.passedTests || 0,
-          totalTests: p.totalTests || 0,
-          percentage: p.totalTests > 0 ? Math.round((p.passedTests / p.totalTests) * 100) : 0,
-          rank: 0,
-          status: 'coding'
-        }))
-      };
-    });
+      if (!isExpired) {
+        formattedRooms.push({
+          id: room._id,
+          roomCode: room.roomCode,
+          title: room.question?.title || 'Unknown Problem',
+          difficulty: room.question?.difficulty || 'Medium',
+          language: 'Multi-language', // Rooms support multiple languages
+          participants: room.participants.length,
+          maxParticipants: room.maxParticipants || 10,
+          timeLeft: timeLeft,
+          status: room.status,
+          prize: `${room.question?.difficulty === 'Hard' ? '100' : room.question?.difficulty === 'Medium' ? '50' : '20'} XP`,
+          participantsList: room.participants.map(p => ({
+            id: p.user._id,
+            name: p.user.name,
+            avatar: p.user.avatar,
+            score: p.passedTests || 0,
+            passedTests: p.passedTests || 0,
+            totalTests: p.totalTests || 0,
+            percentage: p.totalTests > 0 ? Math.round((p.passedTests / p.totalTests) * 100) : 0,
+            rank: 0,
+            status: 'coding'
+          }))
+        });
+      }
+    }
+
+    // Asynchronously update expired rooms
+    if (expiredRoomIds.length > 0) {
+      Room.updateMany(
+        { _id: { $in: expiredRoomIds } },
+        { $set: { status: 'completed', isActive: false } }
+      ).catch(err => console.error('Error auto-closing expired rooms:', err));
+    }
 
     res.status(200).json({
       success: true,
@@ -136,7 +163,8 @@ router.get('/user/active', protect, async (req, res) => {
         { host: req.user._id },
         { 'participants.user': req.user._id }
       ],
-      isActive: true
+      isActive: true,
+      status: { $nin: ['completed', 'abandoned'] } // Exclude finished battles
     })
       .populate('question')
       .populate('host', 'name email avatar')
@@ -290,6 +318,11 @@ router.post('/:code/join', protect, async (req, res) => {
     const isAlreadyParticipant = room.participants.some(p => p.user.toString() === req.user._id.toString());
 
     if (!isAlreadyParticipant) {
+      // Check if room is full
+      if (room.participants.length >= (room.maxParticipants || 10)) {
+        return res.status(400).json({ success: false, message: 'Room is full' });
+      }
+
       room.participants.push({
         user: req.user._id
       });

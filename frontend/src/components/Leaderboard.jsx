@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS } from '../config/api';
+import { getCached, setCache } from '../utils/apiCache';
 
 import Navbar from './Navbar';
+import Skeleton from './common/Skeleton';
 
 const Leaderboard = () => {
     const navigate = useNavigate();
@@ -22,11 +24,25 @@ const Leaderboard = () => {
     const fetchLeaderboard = async () => {
         try {
             setLoading(true);
-            const response = await fetch('http://localhost:3001/api/user/leaderboard');
+
+            // Check cache first (2 minute TTL for leaderboard)
+            const cacheKey = 'leaderboard_global';
+            const cachedData = getCached(cacheKey, 120000);
+
+            if (cachedData) {
+                console.log('Using cached leaderboard data');
+                setLeaderboardData(cachedData);
+                setLoading(false);
+                return;
+            }
+
+            const response = await fetch(API_ENDPOINTS.LEADERBOARD);
             const data = await response.json();
 
             if (data.success) {
                 setLeaderboardData(data.data);
+                // Cache the leaderboard data
+                setCache(cacheKey, data.data);
             }
         } catch (error) {
             console.error('Error fetching leaderboard:', error);
@@ -67,8 +83,55 @@ const Leaderboard = () => {
                 </div>
 
                 {loading ? (
-                    <div className="flex justify-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
+                    <div className="animate-pulse">
+                        {/* Podium Skeleton */}
+                        <div className="flex justify-center items-end gap-6 mb-16 h-64">
+                            <div className="flex flex-col items-center">
+                                <Skeleton className="w-24 h-24 rounded-full mb-3" />
+                                <Skeleton className="w-20 h-4 mb-2" />
+                                <Skeleton className="w-16 h-4" />
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <Skeleton className="w-32 h-32 rounded-full mb-4" />
+                                <Skeleton className="w-24 h-6 mb-2" />
+                                <Skeleton className="w-20 h-4" />
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <Skeleton className="w-24 h-24 rounded-full mb-3" />
+                                <Skeleton className="w-20 h-4 mb-2" />
+                                <Skeleton className="w-16 h-4" />
+                            </div>
+                        </div>
+
+                        {/* List Skeleton */}
+                        <div className="bg-[#1a1f3a]/60 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden">
+                            <div className="grid grid-cols-12 gap-4 p-4 border-b border-gray-700">
+                                <Skeleton className="col-span-1 h-4" />
+                                <Skeleton className="col-span-4 h-4" />
+                                <Skeleton className="col-span-2 h-4" />
+                                <Skeleton className="col-span-2 h-4" />
+                                <Skeleton className="col-span-2 h-4" />
+                                <Skeleton className="col-span-1 h-4" />
+                            </div>
+                            <div className="divide-y divide-gray-700/50">
+                                {[...Array(5)].map((_, i) => (
+                                    <div key={i} className="grid grid-cols-12 gap-4 p-4 items-center">
+                                        <Skeleton className="col-span-1 h-4" />
+                                        <div className="col-span-4 flex items-center gap-3">
+                                            <Skeleton className="w-8 h-8 rounded-full" />
+                                            <div className="flex-1">
+                                                <Skeleton className="w-24 h-4 mb-1" />
+                                                <Skeleton className="w-16 h-3" />
+                                            </div>
+                                        </div>
+                                        <Skeleton className="col-span-2 h-4" />
+                                        <Skeleton className="col-span-2 h-4" />
+                                        <Skeleton className="col-span-2 h-6 rounded" />
+                                        <Skeleton className="col-span-1 h-6 w-6 rounded-full mx-auto" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -144,8 +207,8 @@ const Leaderboard = () => {
                         </div>
 
                         {/* Leaderboard List */}
-                        <div className="bg-[#1a1f3a]/60 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden">
-                            <div className="grid grid-cols-12 gap-4 p-4 border-b border-gray-700 text-gray-400 font-semibold text-sm">
+                        <div className="bg-[#1a1f3a]/60 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden overflow-x-auto">
+                            <div className="min-w-[600px] grid grid-cols-12 gap-4 p-4 border-b border-gray-700 text-gray-400 font-semibold text-sm">
                                 <div className="col-span-1 text-center">Rank</div>
                                 <div className="col-span-4">User</div>
                                 <div className="col-span-2 text-center">Score</div>
@@ -154,7 +217,7 @@ const Leaderboard = () => {
                                 <div className="col-span-1 text-center">Action</div>
                             </div>
 
-                            <div className="divide-y divide-gray-700/50">
+                            <div className="divide-y divide-gray-700/50 min-w-[600px]">
                                 {leaderboardData.slice(3).map((user) => (
                                     <div
                                         key={user._id}

@@ -15,25 +15,53 @@ export const initializeSocket = (server) => {
         console.log(`User connected: ${socket.id}`);
 
         // Join a room
-        socket.on('join_room', (roomCode) => {
-            socket.join(roomCode);
-            console.log(`User ${socket.id} joined room: ${roomCode}`);
-            // Notify everyone in the room (including sender) so they can update their participant list
-            io.to(roomCode).emit('user_joined', { userId: socket.id });
+        socket.on('join_room', ({ roomCode, userId }) => {
+            // Handle both object and string (legacy) for backward compatibility
+            const code = typeof roomCode === 'object' ? roomCode.roomCode : roomCode;
+            const uid = typeof roomCode === 'object' ? roomCode.userId : userId;
+
+            socket.join(code);
+
+            // Store metadata for disconnect handling
+            socket.data.roomCode = code;
+            socket.data.userId = uid;
+
+            console.log(`User ${uid || socket.id} joined room: ${code}`);
+
+            // Notify everyone in the room
+            io.to(code).emit('user_joined', { userId: uid || socket.id });
         });
 
         // Leave a room
         socket.on('leave_room', (roomCode) => {
             socket.leave(roomCode);
             console.log(`User ${socket.id} left room: ${roomCode}`);
-            // Notify everyone remaining in the room
             io.to(roomCode).emit('user_left', { userId: socket.id });
         });
 
         // Start battle (Host only)
-        socket.on('start_battle', ({ roomCode, questionId }) => {
-            console.log(`Battle started in room ${roomCode} for question ${questionId}`);
-            io.to(roomCode).emit('battle_started', { questionId });
+        socket.on('start_battle', async ({ roomCode, questionId }) => {
+            try {
+                const room = await Room.findOne({ roomCode });
+                if (!room) return;
+
+                // Enforce minimum players
+                if (room.participants.length < 2) {
+                    socket.emit('error', { message: 'Need at least 2 players to start!' });
+                    return;
+                }
+
+                console.log(`Battle started in room ${roomCode} for question ${questionId}`);
+
+                // Update room status
+                room.status = 'coding';
+                room.startedAt = new Date();
+                await room.save();
+
+                io.to(roomCode).emit('battle_started', { questionId });
+            } catch (err) {
+                console.error('Error starting battle:', err);
+            }
         });
 
         // Code submission result
@@ -66,47 +94,87 @@ export const initializeSocket = (server) => {
             }
 
             if (status === 'SUCCESS') {
-                io.to(roomCode).emit('game_over', { winner: user });
+                // Atomic check-and-update to prevent race conditions
+                // Only proceed if the room is NOT already completed
+                try {
+                    const room = await Room.findOneAndUpdate(
+                        { roomCode, status: { $ne: 'completed' } },
+                        {
+                            $set: {
+                                status: 'completed',
+                                isActive: false,
+                                endedAt: new Date()
+                            }
+                        },
+                        { new: true }
+                    ).populate('participants.user');
 
-                // Save battle result asynchronously
-                (async () => {
-                    try {
-                        console.log(`Attempting to save battle result for room: ${roomCode}`);
-                        const room = await Room.findOne({ roomCode }).populate('participants.user');
-
-                        if (!room) {
-                            console.error(`❌ Room not found for code: ${roomCode}`);
-                            return;
-                        }
-
-                        console.log(`Found room: ${room._id}, Participants: ${room.participants.length}`);
-
-                        const battleResult = new BattleResult({
-                            roomId: room._id,
-                            question: room.question,
-                            winner: user._id,
-                            participants: room.participants.map(p => p.user._id),
-                            duration: Math.floor((Date.now() - new Date(room.createdAt).getTime()) / 1000) // Approx duration
-                        });
-
-                        const savedResult = await battleResult.save();
-                        console.log(`✅ Battle result saved successfully: ${savedResult._id}`);
-
-                        // Mark room as completed
-                        room.status = 'completed';
-                        room.isActive = false;
-                        await room.save();
-                        console.log(`Room ${roomCode} marked as completed`);
-                    } catch (err) {
-                        console.error('❌ CRITICAL ERROR saving battle result:', err);
-                        console.error('Error details:', JSON.stringify(err, null, 2));
+                    if (!room) {
+                        console.log(`Room ${roomCode} already completed or not found. Ignoring duplicate win.`);
+                        return;
                     }
-                })();
+
+                    console.log(`🏆 Winner declared in ${roomCode}: ${user.name}`);
+                    io.to(roomCode).emit('game_over', { winner: user });
+
+                    // Save battle result asynchronously
+                    (async () => {
+                        try {
+                            const battleResult = new BattleResult({
+                                roomId: room._id,
+                                question: room.question,
+                                winner: user._id,
+                                participants: room.participants.map(p => p.user._id),
+                                scores: room.participants.map(p => ({
+                                    user: p.user._id,
+                                    passedTests: p.passedTests,
+                                    totalTests: p.totalTests
+                                })),
+                                duration: Math.floor((Date.now() - new Date(room.createdAt).getTime()) / 1000)
+                            });
+
+                            const savedResult = await battleResult.save();
+                            console.log(`✅ Battle result saved successfully: ${savedResult._id}`);
+
+                        } catch (err) {
+                            console.error('❌ CRITICAL ERROR saving battle result:', err);
+                        }
+                    })();
+
+                } catch (err) {
+                    console.error('Error handling game over:', err);
+                }
             }
         });
 
-        socket.on('disconnect', () => {
+        socket.on('disconnect', async () => {
             console.log('User disconnected:', socket.id);
+            const { roomCode, userId } = socket.data;
+
+            if (roomCode && userId) {
+                console.log(`Cleaning up user ${userId} from room ${roomCode}`);
+                try {
+                    // Remove user from room participants
+                    await Room.updateOne(
+                        { roomCode },
+                        { $pull: { participants: { user: userId } } }
+                    );
+
+                    // Check if room is empty
+                    const room = await Room.findOne({ roomCode });
+                    if (room && room.participants.length === 0) {
+                        console.log(`Room ${roomCode} is empty. Closing it.`);
+                        room.isActive = false;
+                        room.status = 'abandoned';
+                        await room.save();
+                    } else if (room) {
+                        // Notify others
+                        io.to(roomCode).emit('user_left', { userId });
+                    }
+                } catch (err) {
+                    console.error('Error handling disconnect:', err);
+                }
+            }
         });
     });
 

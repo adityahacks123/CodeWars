@@ -76,8 +76,9 @@ export const getUserStats = async (req, res) => {
         status: isWinner ? 'Won' : 'Lost',
 
         // Scores (TODO: Get from Room model participant progress when available)
-        myScore: 0,  // Placeholder - will be enhanced when Room participants have scores
-        opponentScore: 0,  // Placeholder
+        // Scores
+        myScore: battle.scores?.find(s => s.user.toString() === userId)?.passedTests || 0,
+        opponentScore: battle.scores?.find(s => s.user.toString() !== userId)?.passedTests || 0,
 
         // Time information
         duration: `${Math.floor(battle.duration / 60)}m ${battle.duration % 60}s`,
@@ -444,6 +445,153 @@ export const changePassword = async (req, res) => {
     });
   } catch (error) {
     console.error('Error changing password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// @desc    Update email
+// @route   PUT /api/user/email
+// @access  Private
+export const updateEmail = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Verify password if user has one
+    if (user.password) {
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Incorrect password'
+        });
+      }
+    } else if (user.authProvider === 'google') {
+      return res.status(400).json({
+        success: false,
+        message: 'Google-authenticated users cannot change email directly.'
+      });
+    }
+
+    // Check if email is taken
+    const emailExists = await User.findOne({ email });
+    if (emailExists) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email already in use'
+      });
+    }
+
+    user.email = email;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Email updated successfully',
+      data: {
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error('Error updating email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// @desc    Update notification preferences
+// @route   PUT /api/user/notifications
+// @access  Private
+export const updateNotificationPreferences = async (req, res) => {
+  try {
+    const { emailNotifications, pushNotifications, marketingEmails } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    user.notificationPreferences = {
+      emailNotifications: emailNotifications !== undefined ? emailNotifications : user.notificationPreferences.emailNotifications,
+      pushNotifications: pushNotifications !== undefined ? pushNotifications : user.notificationPreferences.pushNotifications,
+      marketingEmails: marketingEmails !== undefined ? marketingEmails : user.notificationPreferences.marketingEmails
+    };
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Notification preferences updated',
+      data: user.notificationPreferences
+    });
+  } catch (error) {
+    console.error('Error updating notification preferences:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// @desc    Delete user account
+// @route   DELETE /api/user/account
+// @access  Private
+export const deleteAccount = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Verify password if user has one
+    if (user.password) {
+      const isMatch = await user.comparePassword(password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'Incorrect password'
+        });
+      }
+    }
+
+    // Delete user
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting account:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',

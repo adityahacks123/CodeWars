@@ -4,4 +4,12 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    include: ['monaco-editor']
+  },
+  build: {
+    commonjsOptions: {
+      include: [/monaco-editor/, /node_modules/]
+    }
+  }
 })

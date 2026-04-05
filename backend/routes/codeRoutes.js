@@ -1,15 +1,30 @@
 import express from 'express';
-import { executeCode, submitCode, getExecutionStatus, getSubmissions } from '../controllers/codeController.js';
 import { protect } from '../middleware/auth.js';
+import { executeCode } from '../services/codeExecutionService.js';
 
 const router = express.Router();
 
-// Code execution routes
-router.post('/execute', protect, executeCode);
-router.post('/submit', protect, submitCode);
-router.get('/status/:submissionId', protect, getExecutionStatus);
+// @desc    Execute code
+// @route   POST /api/code/execute
+// @access  Private
+router.post('/execute', protect, async (req, res) => {
+    try {
+        const { language, code, inputs } = req.body;
 
-// Submissions routes
-router.get('/submissions', getSubmissions);
+        const results = await executeCode(language, code, inputs);
+
+        res.json({
+            success: true,
+            data: results
+        });
+
+    } catch (error) {
+        console.error('Execution error:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Server error during execution'
+        });
+    }
+});
 
 export default router;

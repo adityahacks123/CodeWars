@@ -39,6 +39,15 @@ const roomSchema = new mongoose.Schema({
       type: Date
     }
   }],
+  type: {
+    type: String,
+    enum: ['1vs1', 'multiplayer'],
+    default: '1vs1'
+  },
+  maxParticipants: {
+    type: Number,
+    default: 2
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -60,6 +69,9 @@ const roomSchema = new mongoose.Schema({
     default: () => new Date(+new Date() + 24 * 60 * 60 * 1000)
   }
 });
+
+// Index for faster active battle queries
+roomSchema.index({ status: 1 });
 
 // Generate a random room code
 roomSchema.statics.generateRoomCode = async function () {

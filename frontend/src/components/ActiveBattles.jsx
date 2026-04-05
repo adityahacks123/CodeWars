@@ -330,12 +330,31 @@ const ActiveBattles = () => {
                       </svg>
                       Spectate
                     </button>
-                    <button
-                      onClick={() => joinBattle(battle.roomCode)}
-                      className="flex-1 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg"
-                    >
-                      Join Battle
-                    </button>
+                    {battle.participants >= battle.maxParticipants ? (
+                      <button
+                        disabled
+                        className="flex-1 bg-gray-600 text-gray-400 cursor-not-allowed font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        Full
+                      </button>
+                    ) : battle.timeLeft === '00:00' ? (
+                      <button
+                        disabled
+                        className="flex-1 bg-red-900/50 text-red-200 cursor-not-allowed font-semibold py-3 px-4 rounded-lg"
+                      >
+                        Ended
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => joinBattle(battle.roomCode)}
+                        className="flex-1 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-600 hover:to-purple-600 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg"
+                      >
+                        Join Battle
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

@@ -76,11 +76,11 @@ const TargetPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0e27] via-[#0f1535] via-[#1a2040] to-[#2a3f5f] text-white relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-primary text-white relative overflow-hidden">
       {/* Background gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/5 to-purple-500/10 pointer-events-none"></div>
-      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-radial from-cyan-500/20 to-transparent rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-radial from-purple-500/20 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-secondary/10 pointer-events-none"></div>
+      <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-radial from-primary/20 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-radial from-secondary/20 to-transparent rounded-full blur-3xl pointer-events-none"></div>
 
       <Navbar />
 
@@ -90,10 +90,10 @@ const TargetPage = () => {
           {/* Left Section */}
           <div>
             {/* Hero Text */}
-            <h1 className="text-6xl font-bold leading-tight mb-8">
+            <h1 className="text-6xl font-bold leading-tight mb-8 font-display">
               CODE & COMPETE<br />
               WITH YOUR<br />
-              <span className="text-cyan-400">TEAM</span>
+              <span className="text-primary">TEAM</span>
             </h1>
 
             {/* Difficulty and Create/Join Room Buttons */}
@@ -101,7 +101,7 @@ const TargetPage = () => {
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
-                className="bg-[#1a1f3a] border border-gray-700 text-white px-6 py-3 rounded-lg focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/50 cursor-pointer font-semibold transition-all"
+                className="bg-background-secondary border border-gray-700 text-white px-6 py-3 rounded-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/50 cursor-pointer font-semibold transition-all"
               >
                 <option value="Easy">Easy</option>
                 <option value="Medium">Medium</option>
@@ -110,7 +110,7 @@ const TargetPage = () => {
 
               <button
                 onClick={() => setShowQuestionModal(true)}
-                className="group relative bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 shadow-lg shadow-cyan-500/50 hover:shadow-cyan-500/70 flex items-center gap-2 hover:scale-105"
+                className="group relative bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-cyan-700 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 shadow-lg shadow-primary/50 hover:shadow-primary/70 flex items-center gap-2 hover:scale-105"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -120,7 +120,7 @@ const TargetPage = () => {
 
               <button
                 onClick={() => setShowJoinRoomModal(true)}
-                className="group relative bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 shadow-lg shadow-purple-600/50 hover:shadow-purple-600/70 flex items-center gap-2 hover:scale-105"
+                className="group relative bg-gradient-to-r from-secondary to-secondary-hover hover:from-secondary-hover hover:to-purple-800 text-white font-semibold px-8 py-3 rounded-lg transition-all duration-300 shadow-lg shadow-secondary/50 hover:shadow-secondary/70 flex items-center gap-2 hover:scale-105"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -131,18 +131,18 @@ const TargetPage = () => {
 
             {/* Info Text */}
             <div className="flex items-start gap-3 mb-12 bg-[#1a1f3a] border border-gray-700 rounded-lg p-4">
-              <svg className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-gray-300 text-sm">
-                You will get <span className="text-cyan-400 font-semibold">45 minutes</span> to solve <span className="text-cyan-400 font-semibold">3 medium</span> difficulty problems.
+                You will get <span className="text-primary font-semibold">45 minutes</span> to solve <span className="text-primary font-semibold">3 medium</span> difficulty problems.
               </p>
             </div>
 
             {/* Feature Cards */}
             <div className="grid grid-cols-2 gap-6">
               {/* Real-time Battles */}
-              <div className="bg-[#1a1f3a] border border-gray-700 rounded-xl p-6 hover:border-cyan-500 transition-colors">
+              <div className="bg-background-secondary border border-gray-700 rounded-xl p-6 hover:border-primary transition-colors">
                 <div className="text-4xl mb-3">⚡</div>
                 <h3 className="text-xl font-bold mb-2">Real-time Battles</h3>
                 <p className="text-gray-400 text-sm">
@@ -151,7 +151,7 @@ const TargetPage = () => {
               </div>
 
               {/* Global Rankings */}
-              <div className="bg-[#1a1f3a] border border-gray-700 rounded-xl p-6 hover:border-cyan-500 transition-colors">
+              <div className="bg-background-secondary border border-gray-700 rounded-xl p-6 hover:border-primary transition-colors">
                 <div className="text-4xl mb-3">🏆</div>
                 <h3 className="text-xl font-bold mb-2">Global Rankings</h3>
                 <p className="text-gray-400 text-sm">
@@ -162,7 +162,7 @@ const TargetPage = () => {
           </div>
 
           {/* Right Section - Code Editor Preview */}
-          <div className="bg-[#1a1f3a]/90 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden ml-12 shadow-2xl shadow-cyan-500/20 transform hover:scale-[1.02] transition-all duration-300">
+          <div className="bg-background-secondary/90 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden ml-12 shadow-2xl shadow-primary/20 transform hover:scale-[1.02] transition-all duration-300">
             {/* Browser Header */}
             <div className="bg-[#0f1425] border-b border-gray-700 px-4 py-3 flex items-center gap-2">
               <div className="flex gap-2">
@@ -177,7 +177,7 @@ const TargetPage = () => {
 
             {/* Code Editor Tabs */}
             <div className="bg-[#0f1425] border-b border-gray-700 flex">
-              <div className="px-4 py-2 bg-[#1a1f3a] text-white text-sm border-r border-gray-700">
+              <div className="px-4 py-2 bg-background-secondary text-white text-sm border-r border-gray-700">
                 Solution.js
               </div>
               <div className="px-4 py-2 text-gray-400 text-sm">
@@ -277,11 +277,11 @@ const TargetPage = () => {
       {/* Join Room Modal */}
       {showJoinRoomModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-gradient-to-br from-[#0a0e27] to-[#1a1f3a] border border-purple-500/30 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl shadow-purple-500/20">
+          <div className="bg-gradient-to-br from-background to-background-secondary border border-secondary/30 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl shadow-secondary/20">
             {/* Header */}
-            <div className="bg-gradient-to-r from-purple-600/20 to-cyan-600/20 border-b border-purple-500/30 px-8 py-6 flex justify-between items-center">
+            <div className="bg-gradient-to-r from-secondary/20 to-primary/20 border-b border-secondary/30 px-8 py-6 flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="bg-purple-600 rounded-lg p-2">
+                <div className="bg-secondary rounded-lg p-2">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                   </svg>
@@ -318,7 +318,7 @@ const TargetPage = () => {
                       setJoinError(null);
                     }}
                     placeholder="ABC123"
-                    className="w-full bg-[#1a1f3a] border-2 border-purple-500/30 hover:border-purple-500/50 focus:border-purple-500 text-white px-4 py-4 rounded-lg focus:outline-none text-center text-3xl font-mono tracking-widest font-bold transition-colors"
+                    className="w-full bg-background-secondary border-2 border-secondary/30 hover:border-secondary/50 focus:border-secondary text-white px-4 py-4 rounded-lg focus:outline-none text-center text-3xl font-mono tracking-widest font-bold transition-colors"
                     maxLength="6"
                     disabled={joiningRoom}
                     autoFocus
@@ -340,7 +340,7 @@ const TargetPage = () => {
                 <button
                   type="submit"
                   disabled={joiningRoom || !roomCode.trim()}
-                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg shadow-purple-600/50 hover:shadow-purple-600/70 disabled:shadow-none flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-secondary to-secondary-hover hover:from-secondary-hover hover:to-purple-800 disabled:from-gray-600 disabled:to-gray-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg shadow-secondary/50 hover:shadow-secondary/70 disabled:shadow-none flex items-center justify-center gap-2"
                 >
                   {joiningRoom ? (
                     <>

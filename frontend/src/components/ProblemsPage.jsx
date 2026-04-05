@@ -28,7 +28,7 @@ const ProblemsPage = () => {
 
   const fetchTopics = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/problems');
+      const response = await fetch(API_ENDPOINTS.PROBLEMS);
       const data = await response.json();
       if (data.success && data.data) {
         // Extract unique topics from problems
@@ -43,7 +43,7 @@ const ProblemsPage = () => {
   const fetchQuestions = async () => {
     setLoading(true);
     try {
-      let url = 'http://localhost:3001/api/problems';
+      let url = API_ENDPOINTS.PROBLEMS;
 
       // Fetch all problems first
       const response = await fetch(url);
@@ -125,8 +125,8 @@ const ProblemsPage = () => {
         </div>
 
         {/* Filters Section */}
-        <div className="bg-[#0f1425] border border-gray-700 rounded-xl p-6 mb-6">
-          <div className="grid grid-cols-3 gap-4">
+        <div className="bg-[#0f1425] border border-gray-700 rounded-xl p-4 md:p-6 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div>
               <label className="block text-sm font-semibold text-gray-300 mb-2">Search</label>

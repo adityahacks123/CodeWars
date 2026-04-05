@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../config/api';
 import { useNavigate } from 'react-router-dom';
 
 import Navbar from './Navbar';
@@ -24,6 +25,27 @@ const SettingsPage = () => {
         confirmPassword: ''
     });
 
+    // Notification Preferences State
+    const [notifications, setNotifications] = useState({
+        emailNotifications: true,
+        pushNotifications: true,
+        marketingEmails: false
+    });
+
+    // Email Change State
+    const [emailChange, setEmailChange] = useState({
+        newEmail: '',
+        password: '',
+        isEditing: false
+    });
+
+    // Delete Account State
+    const [deleteAccount, setDeleteAccount] = useState({
+        isOpen: false,
+        password: '',
+        confirmText: ''
+    });
+
     useEffect(() => {
         fetchProfile();
     }, []);
@@ -36,7 +58,7 @@ const SettingsPage = () => {
                 return;
             }
 
-            const response = await fetch('http://localhost:3001/api/auth/me', {
+            const response = await fetch(API_ENDPOINTS.ME, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -50,6 +72,9 @@ const SettingsPage = () => {
                     bio: data.user.bio || '',
                     avatar: data.user.avatar || ''
                 });
+                if (data.user.notificationPreferences) {
+                    setNotifications(data.user.notificationPreferences);
+                }
             }
         } catch (error) {
             console.error('Error fetching profile:', error);
@@ -63,7 +88,7 @@ const SettingsPage = () => {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:3001/api/users/profile', {
+            const response = await fetch(API_ENDPOINTS.UPDATE_PROFILE, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -104,7 +129,7 @@ const SettingsPage = () => {
 
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch('http://localhost:3001/api/users/password', {
+            const response = await fetch(API_ENDPOINTS.CHANGE_PASSWORD, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -126,6 +151,92 @@ const SettingsPage = () => {
         } catch (error) {
             setMessage({ type: 'error', text: 'Server error occurred' });
         } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleEmailChange = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setMessage({ type: '', text: '' });
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(API_ENDPOINTS.CHANGE_EMAIL, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    email: emailChange.newEmail,
+                    password: emailChange.password
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setMessage({ type: 'success', text: 'Email updated successfully!' });
+                setProfile({ ...profile, email: emailChange.newEmail });
+                setEmailChange({ newEmail: '', password: '', isEditing: false });
+            } else {
+                setMessage({ type: 'error', text: data.message || 'Failed to update email' });
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Server error occurred' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleNotificationUpdate = async (newPrefs) => {
+        setNotifications(newPrefs);
+        try {
+            const token = localStorage.getItem('token');
+            await fetch(API_ENDPOINTS.NOTIFICATIONS, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(newPrefs)
+            });
+        } catch (error) {
+            console.error('Error updating notifications:', error);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        if (deleteAccount.confirmText !== 'DELETE') {
+            setMessage({ type: 'error', text: 'Please type DELETE to confirm' });
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(API_ENDPOINTS.DELETE_ACCOUNT, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    password: deleteAccount.password
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                navigate('/login');
+            } else {
+                setMessage({ type: 'error', text: data.message || 'Failed to delete account' });
+                setLoading(false);
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Server error occurred' });
             setLoading(false);
         }
     };
@@ -159,6 +270,15 @@ const SettingsPage = () => {
                                 }`}
                         >
                             Security
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('notifications')}
+                            className={`px-6 py-4 font-semibold transition-colors ${activeTab === 'notifications'
+                                ? 'bg-cyan-500/10 text-cyan-400 border-b-2 border-cyan-500'
+                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                }`}
+                        >
+                            Notifications
                         </button>
                     </div>
 
@@ -207,13 +327,64 @@ const SettingsPage = () => {
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">Email Address</label>
-                                    <input
-                                        type="email"
-                                        value={profile.email}
-                                        disabled
-                                        className="w-full bg-[#0f1425]/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-500 cursor-not-allowed"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                                    {!emailChange.isEditing ? (
+                                        <div className="flex gap-4">
+                                            <input
+                                                type="email"
+                                                value={profile.email}
+                                                disabled
+                                                className="w-full bg-[#0f1425]/50 border border-gray-700 rounded-lg px-4 py-2 text-gray-500 cursor-not-allowed"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setEmailChange({ ...emailChange, isEditing: true, newEmail: profile.email })}
+                                                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
+                                            >
+                                                Change
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4 bg-[#0f1425] p-4 rounded-lg border border-gray-700">
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">New Email</label>
+                                                <input
+                                                    type="email"
+                                                    value={emailChange.newEmail}
+                                                    onChange={(e) => setEmailChange({ ...emailChange, newEmail: e.target.value })}
+                                                    className="w-full bg-[#1a1f3a] border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-cyan-500"
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Confirm with Password</label>
+                                                <input
+                                                    type="password"
+                                                    value={emailChange.password}
+                                                    onChange={(e) => setEmailChange({ ...emailChange, password: e.target.value })}
+                                                    className="w-full bg-[#1a1f3a] border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-cyan-500"
+                                                    placeholder="Enter current password"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="flex gap-2 justify-end">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEmailChange({ ...emailChange, isEditing: false, password: '' })}
+                                                    className="text-gray-400 hover:text-white px-3 py-1"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleEmailChange}
+                                                    disabled={loading || !emailChange.newEmail || !emailChange.password}
+                                                    className="bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 text-white px-4 py-1 rounded-lg transition-colors"
+                                                >
+                                                    Update Email
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>
@@ -288,7 +459,120 @@ const SettingsPage = () => {
                                 >
                                     {loading ? 'Updating...' : 'Update Password'}
                                 </button>
+
+                                <div className="pt-8 border-t border-gray-700 mt-8">
+                                    <h3 className="text-xl font-bold text-red-500 mb-4">Danger Zone</h3>
+                                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6">
+                                        <h4 className="font-semibold text-white mb-2">Delete Account</h4>
+                                        <p className="text-gray-400 text-sm mb-4">
+                                            Once you delete your account, there is no going back. Please be certain.
+                                        </p>
+                                        {!deleteAccount.isOpen ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setDeleteAccount({ ...deleteAccount, isOpen: true })}
+                                                className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                                            >
+                                                Delete Account
+                                            </button>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-400 mb-2">
+                                                        Type "DELETE" to confirm
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        value={deleteAccount.confirmText}
+                                                        onChange={(e) => setDeleteAccount({ ...deleteAccount, confirmText: e.target.value })}
+                                                        className="w-full bg-[#0f1425] border border-red-500/50 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-red-500"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-400 mb-2">
+                                                        Confirm with Password
+                                                    </label>
+                                                    <input
+                                                        type="password"
+                                                        value={deleteAccount.password}
+                                                        onChange={(e) => setDeleteAccount({ ...deleteAccount, password: e.target.value })}
+                                                        className="w-full bg-[#0f1425] border border-red-500/50 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-red-500"
+                                                    />
+                                                </div>
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setDeleteAccount({ isOpen: false, password: '', confirmText: '' })}
+                                                        className="text-gray-400 hover:text-white px-4 py-2"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDeleteAccount}
+                                                        disabled={loading || deleteAccount.confirmText !== 'DELETE' || !deleteAccount.password}
+                                                        className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+                                                    >
+                                                        Permanently Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </form>
+                        )}
+
+                        {activeTab === 'notifications' && (
+                            <div className="max-w-xl space-y-6">
+                                <div className="flex items-center justify-between p-4 bg-[#0f1425] rounded-lg border border-gray-700">
+                                    <div>
+                                        <h3 className="font-semibold text-white">Email Notifications</h3>
+                                        <p className="text-sm text-gray-400">Receive updates about your account via email</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notifications.emailNotifications}
+                                            onChange={(e) => handleNotificationUpdate({ ...notifications, emailNotifications: e.target.checked })}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center justify-between p-4 bg-[#0f1425] rounded-lg border border-gray-700">
+                                    <div>
+                                        <h3 className="font-semibold text-white">Push Notifications</h3>
+                                        <p className="text-sm text-gray-400">Receive push notifications in browser</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notifications.pushNotifications}
+                                            onChange={(e) => handleNotificationUpdate({ ...notifications, pushNotifications: e.target.checked })}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center justify-between p-4 bg-[#0f1425] rounded-lg border border-gray-700">
+                                    <div>
+                                        <h3 className="font-semibold text-white">Marketing Emails</h3>
+                                        <p className="text-sm text-gray-400">Receive news, updates, and special offers</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={notifications.marketingEmails}
+                                            onChange={(e) => handleNotificationUpdate({ ...notifications, marketingEmails: e.target.checked })}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+                                    </label>
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>

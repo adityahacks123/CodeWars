@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
+import { API_ENDPOINTS } from '../config/api';
 import * as monaco from 'monaco-editor';
 
 const SubmissionsPage = () => {
@@ -18,7 +19,7 @@ const SubmissionsPage = () => {
   const fetchSubmissions = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/submissions');
+      const response = await fetch(API_ENDPOINTS.SUBMISSIONS);
       if (response.ok) {
         const data = await response.json();
         setSubmissions(data);
